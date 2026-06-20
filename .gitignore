@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
@@ -34,3 +32,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prisma
+/templates
+
+# API validation harness output (contains real user data dumped from the DB)
+/scripts/validation/data
+/scripts/validation/api
+/scripts/validation/expected

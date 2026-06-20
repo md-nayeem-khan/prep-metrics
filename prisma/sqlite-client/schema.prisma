@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./sqlite-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SQLITE_DATABASE_URL")
+}
+
+model Problem {
+  id         Int      @id @default(autoincrement())
+  platform   String
+  problemId  String
+  title      String
+  difficulty String
+  url        String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  source String @default("NeetCode")
+
+  tags           ProblemTag[]
+  companies      ProblemCompany[]
+  patterns       ProblemPattern[]
+  submissions    Submission[]
+  sessions       Session[]
+  mockInterviews MockInterview[]
+
+  @@unique([platform, problemId])
+  @@index([platform])
+  @@index([difficulty])
+  @@index([source])
+  @@index([source, difficulty])
+  @@map("problems")
+}
+
+model ProblemCompany {
+  id        Int @id @default(autoincrement())
+  problemId Int
+  companyId Int
+
+  problem Problem     @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  company CompanyCard @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, companyId])
+  @@index([problemId])
+  @@index([companyId])
+  @@map("problem_companies")
+}
+
+model ProblemTag {
+  id        Int    @id @default(autoincrement())
+  problemId Int
+  tag       String
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@index([tag])
+  @@map("problem_tags")
+}
+
+model Pattern {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  category    String
+  description String?
+
+  problems ProblemPattern[]
+
+  @@index([category])
+  @@map("patterns")
+}
+
+model CompanyCard {
+  id             Int      @id @default(autoincrement())
+  name           String   @unique
+  icon           String   @default("🏢")
+  targetProblems Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  problems ProblemCompany[]
+
+  @@map("company_cards")
+}
+
+model ProblemPattern {
+  id        Int @id @default(autoincrement())
+  problemId Int
+  patternId Int
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, patternId])
+  @@index([problemId])
+  @@index([patternId])
+  @@index([patternId, problemId])
+  @@map("problem_patterns")
+}
+
+model Submission {
+  id               Int      @id @default(autoincrement())
+  problemId        Int
+  attemptNumber    Int
+  timeSpentSeconds Int      @map("time_spent_seconds")
+  status           String
+  notes            String?
+  submittedAt      DateTime @map("submitted_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  attemptType               String  @default("First")
+  wasHintUsed               Boolean @default(false) @map("was_hint_used")
+  mistakeNote               String? @map("mistake_note")
+  approachNote              String? @map("approach_note")
+  patternRecognitionSeconds Int?    @map("pattern_recognition_seconds")
+
+  problem   Problem    @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  revisions Revision[]
+
+  @@index([problemId])
+  @@index([submittedAt])
+  @@index([status])
+  @@index([attemptType])
+  @@index([patternRecognitionSeconds])
+  @@index([submittedAt, status])
+  @@index([problemId, status, submittedAt])
+  @@map("submissions")
+}
+
+model Session {
+  id              Int       @id @default(autoincrement())
+  problemId       Int
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationSeconds Int?
+  notes           String?
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@index([startedAt])
+  @@map("sessions")
+}
+
+model Revision {
+  id             Int       @id @default(autoincrement())
+  submissionId   Int
+  intervalLevel  Int       @default(0)
+  nextReviewDate DateTime
+  completed      Boolean   @default(false)
+  completedAt    DateTime?
+
+  wasSuccessful      Boolean?
+  timeSpentSeconds   Int?
+  solvedWithoutHint  Boolean?
+  confidenceLevel    Int?
+  difficultyRating   Int?
+  notes              String?
+  previousRevisionId Int?
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([nextReviewDate])
+  @@index([completed])
+  @@index([submissionId])
+  @@map("revisions")
+}
+
+model MockInterview {
+  id        Int      @id @default(autoincrement())
+  problemId Int      @map("problem_id")
+  date      DateTime @default(now())
+  timeLimit Int      @default(2700) @map("time_limit")
+
+  timeTakenSeconds          Int?    @map("time_taken_seconds")
+  patternRecognitionSeconds Int?    @map("pattern_recognition_seconds")
+  solved                    Boolean @default(false)
+  explanationScore          Int?    @map("explanation_score")
+  codeQualityScore          Int?    @map("code_quality_score")
+  overallScore              Float?  @map("overall_score")
+
+  notes String?
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([problemId])
+  @@index([overallScore, date])
+  @@map("mock_interviews")
+}
+
+model DailyProgress {
+  id             Int      @id @default(autoincrement())
+  date           DateTime @unique
+  problemsSolved Int      @default(0)
+  totalTimeSpent Int      @default(0)
+  patternsWorked Int      @default(0)
+  mockInterviews Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@map("daily_progress")
+}
+
+model Goal {
+  id          Int     @id @default(autoincrement())
+  title       String
+  description String?
+  type        String
+
+  targetValue  Int
+  currentValue Int    @default(0)
+  unit         String @default("problems")
+
+  startDate DateTime @default(now())
+  deadline  DateTime
+
+  status   String @default("active")
+  priority String @default("medium")
+
+  targetPattern    String?
+  targetCompany    String?
+  targetDifficulty String?
+
+  completedAt        DateTime?
+  lastProgressUpdate DateTime  @default(now())
+
+  milestones Milestone[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([deadline])
+  @@index([priority, status])
+  @@index([type])
+  @@map("goals")
+}
+
+model Milestone {
+  id     Int @id @default(autoincrement())
+  goalId Int
+
+  title       String
+  description String?
+  targetValue Int
+  dueDate     DateTime
+
+  completed     Boolean   @default(false)
+  completedDate DateTime?
+
+  completionNote String?
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([goalId])
+  @@index([dueDate])
+  @@index([completed])
+  @@map("milestones")
+}
