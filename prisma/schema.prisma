@@ -1,0 +1,710 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String?
+  bio           String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Problem {
+  id         Int      @id @default(autoincrement())
+  userId     String?  @map("user_id")
+  platform   String   // leetcode, codeforces, atcoder, hackerrank, other
+  problemId  String   // e.g., "1", "4A", "1234B"
+  title      String
+  difficulty String   // easy, medium, hard, unrated
+  url        String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // NEW FIELDS for FAANG readiness
+  source     String   @default("NeetCode")  // "NeetCode" | "Company"
+
+  tags           ProblemTag[]
+  companies      ProblemCompany[]
+  patterns       ProblemPattern[]
+  submissions    Submission[]
+  sessions       Session[]
+  mockInterviews MockInterview[]
+
+  @@unique([userId, platform, problemId])
+  @@index([userId])
+  @@index([platform])
+  @@index([difficulty])
+  @@index([source])
+  @@index([source, difficulty]) // NEW: For filtered company queries
+  @@map("problems")
+}
+
+model ProblemCompany {
+  id        Int    @id @default(autoincrement())
+  userId    String? @map("user_id")
+  problemId Int
+  companyId Int
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  company CompanyCard @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, companyId])
+  @@index([userId])
+  @@index([problemId])
+  @@index([companyId])
+  @@map("problem_companies")
+}
+
+model ProblemTag {
+  id        Int     @id @default(autoincrement())
+  userId    String? @map("user_id")
+  problemId Int
+  tag       String
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([tag])
+  @@map("problem_tags")
+}
+
+model Pattern {
+  id          Int     @id @default(autoincrement())
+  userId      String? @map("user_id")
+  name        String
+  category    String
+  description String?
+
+  problems ProblemPattern[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([category])
+  @@map("patterns")
+}
+
+model CompanyCard {
+  id             Int      @id @default(autoincrement())
+  userId         String?  @map("user_id")
+  name           String
+  icon           String   @default("🏢")
+  targetProblems Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  problems            ProblemCompany[]
+  sdQuestions         SDQuestionCompany[]
+  behavioralQuestions BehavioralQuestionCompany[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("company_cards")
+}
+
+model ProblemPattern {
+  id        Int @id @default(autoincrement())
+  userId    String? @map("user_id")
+  problemId Int
+  patternId Int
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, patternId])
+  @@index([userId])
+  @@index([problemId])
+  @@index([patternId])
+  @@index([patternId, problemId]) // NEW: For pattern-based problem queries
+  @@map("problem_patterns")
+}
+
+model Submission {
+  id               Int      @id @default(autoincrement())
+  userId           String?  @map("user_id")
+  problemId        Int
+  attemptNumber    Int      // 1, 2, 3, ...
+  timeSpentSeconds Int      @map("time_spent_seconds")
+  status           String   // solved, failed, partial, abandoned
+  notes            String?
+  submittedAt      DateTime @map("submitted_at") // When the problem was actually solved
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // NEW FIELDS for quality tracking
+  attemptType                String   @default("First")    // "First" | "Revision"  
+  wasHintUsed                Boolean  @default(false) @map("was_hint_used")
+  mistakeNote                String?  @map("mistake_note")
+  approachNote               String?  @map("approach_note")
+  patternRecognitionSeconds  Int?     @map("pattern_recognition_seconds")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  revisions Revision[] // NEW: Spaced repetition revisions
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([submittedAt])
+  @@index([status])
+  @@index([attemptType])
+  @@index([patternRecognitionSeconds])
+  @@index([submittedAt, status])
+  @@index([problemId, status, submittedAt])
+  @@map("submissions")
+}
+
+model Session {
+  id              Int       @id @default(autoincrement())
+  userId          String?   @map("user_id")
+  problemId       Int
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationSeconds Int?
+  notes           String?
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([startedAt])
+  @@map("sessions")
+}
+
+// NEW MODEL: Spaced Repetition System
+model Revision {
+  id             Int       @id @default(autoincrement())
+  userId         String?   @map("user_id")
+  submissionId   Int
+  intervalLevel  Int       @default(0) // 0=1day, 1=3days, 2=7days, etc.
+  nextReviewDate DateTime  
+  completed      Boolean   @default(false)
+  completedAt    DateTime?
+  
+  // Result of revision attempt
+  wasSuccessful      Boolean?
+  timeSpentSeconds   Int?
+  solvedWithoutHint  Boolean? // Critical for interview readiness
+  confidenceLevel    Int?     // 1-5 scale: how confident they felt
+  difficultyRating   Int?     // 1-5 scale: how hard it felt during revision
+  notes              String?
+  previousRevisionId Int?     // Link to previous revision in chain
+  
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([nextReviewDate])
+  @@index([completed])
+  @@index([submissionId])
+  @@map("revisions")
+}
+
+// Mock Interview Simulation — multi-type session record (coding | systemDesign | behavioral).
+// The session row holds the timer + lifecycle; for SD/behavioral the detailed rubric lives on
+// a dual-written SystemDesignAttempt / BehavioralAttempt (mode='mock') so it feeds the existing
+// readiness analytics. Coding keeps its inline 2-dimension rubric.
+model MockInterview {
+  id     Int     @id @default(autoincrement())
+  userId String? @map("user_id")
+
+  type   String  @default("coding")     // "coding" | "systemDesign" | "behavioral"
+  status String  @default("inProgress") // "inProgress" | "completed"
+
+  // Per-type question link (exactly one set, enforced in the API layer)
+  problemId              Int? @map("problem_id")
+  systemDesignQuestionId Int? @map("system_design_question_id")
+  behavioralQuestionId   Int? @map("behavioral_question_id")
+  storyId                Int? @map("story_id") // behavioral: STAR story used (optional)
+
+  // Link to the dual-written attempt that holds the detailed rubric + feeds analytics
+  systemDesignAttemptId Int? @unique @map("system_design_attempt_id")
+  behavioralAttemptId   Int? @unique @map("behavioral_attempt_id")
+
+  date             DateTime @default(now())
+  timeLimit        Int      @default(2700) @map("time_limit") // seconds
+
+  // Performance metrics
+  timeTakenSeconds          Int?     @map("time_taken_seconds")
+  patternRecognitionSeconds Int?     @map("pattern_recognition_seconds") // coding-only
+  solved                    Boolean  @default(false)
+  explanationScore          Int?     @map("explanation_score") // coding 1-5
+  codeQualityScore          Int?     @map("code_quality_score") // coding 1-5
+  overallScore              Float?   @map("overall_score")      // (exp+code)/2 for coding; copied from attempt for SD/behavioral
+
+  notes            String?
+
+  problem              Problem?              @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  systemDesignQuestion SystemDesignQuestion? @relation(fields: [systemDesignQuestionId], references: [id], onDelete: Cascade)
+  behavioralQuestion   BehavioralQuestion?   @relation(fields: [behavioralQuestionId], references: [id], onDelete: Cascade)
+  story                StarStory?            @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  systemDesignAttempt  SystemDesignAttempt?  @relation(fields: [systemDesignAttemptId], references: [id], onDelete: SetNull)
+  behavioralAttempt    BehavioralAttempt?    @relation(fields: [behavioralAttemptId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@index([problemId])
+  @@index([systemDesignQuestionId])
+  @@index([behavioralQuestionId])
+  @@index([overallScore, date])
+  @@map("mock_interviews")
+}
+
+// NEW MODEL: Daily Progress Tracking for Streaks
+model DailyProgress {
+  id              Int      @id @default(autoincrement())
+  userId          String?  @map("user_id")
+  date            DateTime
+  problemsSolved  Int      @default(0)
+  totalTimeSpent  Int      @default(0) // seconds
+  patternsWorked  Int      @default(0)
+  mockInterviews  Int      @default(0)
+  systemDesignAttempts Int @default(0) @map("system_design_attempts")
+  behavioralAttempts   Int @default(0) @map("behavioral_attempts")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("daily_progress")
+}
+
+// NEW MODEL: Goals & Milestones for Structured Interview Prep
+model Goal {
+  id          Int      @id @default(autoincrement())
+  userId      String?  @map("user_id")
+  title       String
+  description String?
+  type        String   // "problemCount" | "patternMastery" | "companyReady" | "speedImprovement" | "streakDays" | "custom" | "systemDesignReadiness" | "behavioralCoverage" | "storyBankSize" | "topicMastery"
+  track       String   @default("coding") // "coding" | "systemDesign" | "behavioral"
+
+  // Target metrics
+  targetValue     Int      // e.g., 500 problems, 30 days streak, 100% pattern mastery
+  currentValue    Int      @default(0)
+  unit            String   @default("problems") // "problems" | "patterns" | "days" | "minutes" | "percentage"
+  
+  // Timeline
+  startDate       DateTime @default(now())
+  deadline        DateTime
+  
+  // Status & Priority
+  status          String   @default("active") // "active" | "completed" | "paused" | "abandoned"
+  priority        String   @default("medium") // "critical" | "high" | "medium" | "low"
+  
+  // Optional filters for targeted goals
+  targetPattern   String?  // e.g., "Graphs", "Dynamic Programming"
+  targetCompany   String?  // e.g., "Amazon", "Google"
+  targetDifficulty String? // e.g., "Hard"
+  
+  // Progress tracking
+  completedAt     DateTime?
+  lastProgressUpdate DateTime @default(now())
+  
+  // Milestones
+  milestones      Milestone[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([deadline])
+  @@index([priority, status])
+  @@index([type])
+  @@index([track])
+  @@map("goals")
+}
+
+model Milestone {
+  id              Int      @id @default(autoincrement())
+  userId          String?  @map("user_id")
+  goalId          Int
+  
+  title           String
+  description     String?
+  targetValue     Int      // Milestone checkpoint value
+  dueDate         DateTime
+  
+  // Status
+  completed       Boolean  @default(false)
+  completedDate   DateTime?
+  
+  // Optional: Track what triggered completion
+  completionNote  String?
+  
+  goal            Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([goalId])
+  @@index([dueDate])
+  @@index([completed])
+  @@map("milestones")
+}
+
+// ============================================================
+// SYSTEM DESIGN TRACK (FAANG-style, rubric-driven analytics)
+// ============================================================
+
+model SystemDesignQuestion {
+  id         Int      @id @default(autoincrement())
+  userId     String?  @map("user_id")
+  slug       String
+  title      String
+  difficulty String   // "medium" | "hard"
+  category   String   // "Storage", "Social/Feed", "Streaming", "Messaging", "Geo", "Infra/Primitive"
+
+  // Rich content (markdown)
+  prompt                    String
+  functionalRequirements    String? @map("functional_requirements")
+  nonFunctionalRequirements String? @map("non_functional_requirements")
+  estimationNotes           String? @map("estimation_notes")
+  referenceSolution         String? @map("reference_solution")
+  commonPitfalls            String? @map("common_pitfalls")
+
+  source    String   @default("Curated") // "Curated" | "Company"
+  url       String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  topics    SDQuestionTopic[]
+  companies SDQuestionCompany[]
+  attempts  SystemDesignAttempt[]
+  mockInterviews MockInterview[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([difficulty])
+  @@index([category])
+  @@index([source])
+  @@map("system_design_questions")
+}
+
+model SystemDesignTopic {
+  id          Int     @id @default(autoincrement())
+  userId      String? @map("user_id")
+  name        String
+  category    String  // "Scalability" | "Storage" | "Consistency" | "Networking" | "Messaging"
+  description String?
+
+  questions SDQuestionTopic[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([category])
+  @@map("system_design_topics")
+}
+
+model SDQuestionTopic {
+  id         Int     @id @default(autoincrement())
+  userId     String? @map("user_id")
+  questionId Int     @map("question_id")
+  topicId    Int     @map("topic_id")
+
+  question SystemDesignQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  topic    SystemDesignTopic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, topicId])
+  @@index([userId])
+  @@index([questionId])
+  @@index([topicId])
+  @@index([topicId, questionId])
+  @@map("sd_question_topics")
+}
+
+model SDQuestionCompany {
+  id         Int     @id @default(autoincrement())
+  userId     String? @map("user_id")
+  questionId Int     @map("question_id")
+  companyId  Int     @map("company_id")
+
+  question SystemDesignQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  company  CompanyCard          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, companyId])
+  @@index([userId])
+  @@index([questionId])
+  @@index([companyId])
+  @@map("sd_question_companies")
+}
+
+model SystemDesignAttempt {
+  id               Int      @id @default(autoincrement())
+  userId           String?  @map("user_id")
+  questionId       Int      @map("question_id")
+  attemptNumber    Int      @map("attempt_number")
+  attemptType      String   @default("First") @map("attempt_type") // "First" | "Revision"
+  mode             String   @default("practice") // "practice" | "mock"
+  timeSpentSeconds Int      @map("time_spent_seconds")
+  status           String   // "completed" | "partial" | "abandoned"
+  submittedAt      DateTime @map("submitted_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // FAANG rubric dimensions (1-5 each)
+  requirementsScore    Int?   @map("requirements_score")
+  estimationScore      Int?   @map("estimation_score")
+  highLevelDesignScore Int?   @map("high_level_design_score")
+  dataModelApiScore    Int?   @map("data_model_api_score")
+  deepDiveScore        Int?   @map("deep_dive_score")
+  scalabilityScore     Int?   @map("scalability_score")
+  tradeoffScore        Int?   @map("tradeoff_score")
+  communicationScore   Int?   @map("communication_score")
+  overallScore         Float? @map("overall_score") // auto-computed weighted mean (1-5)
+
+  usedReference Boolean @default(false) @map("used_reference")
+  approachNote  String? @map("approach_note")
+  mistakeNote   String? @map("mistake_note")
+
+  question      SystemDesignQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  revisions     SystemDesignRevision[]
+  mockInterview MockInterview?
+
+  @@index([userId])
+  @@index([questionId])
+  @@index([submittedAt])
+  @@index([status])
+  @@index([questionId, status, submittedAt])
+  @@map("system_design_attempts")
+}
+
+model SystemDesignRevision {
+  id             Int       @id @default(autoincrement())
+  userId         String?   @map("user_id")
+  attemptId      Int       @map("attempt_id")
+  intervalLevel  Int       @default(0) @map("interval_level")
+  nextReviewDate DateTime  @map("next_review_date")
+  completed      Boolean   @default(false)
+  completedAt    DateTime? @map("completed_at")
+
+  wasSuccessful    Boolean? @map("was_successful")
+  timeSpentSeconds Int?     @map("time_spent_seconds")
+  overallScore     Float?   @map("overall_score")
+  confidenceLevel  Int?     @map("confidence_level")
+  notes            String?
+
+  attempt SystemDesignAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([nextReviewDate])
+  @@index([completed])
+  @@index([attemptId])
+  @@map("system_design_revisions")
+}
+
+// ============================================================
+// BEHAVIORAL TRACK (FAANG-style, STAR + competency analytics)
+// ============================================================
+
+model BehavioralQuestion {
+  id         Int      @id @default(autoincrement())
+  userId     String?  @map("user_id")
+  slug       String
+  prompt     String
+  category   String   // "Failure" | "Conflict" | "Leadership" | "Ambiguity" | "Teamwork" | "Influence" | "Ownership" | "Deadline" | "Growth"
+  difficulty String?
+
+  // Rich content (markdown)
+  whatTheyAssess String? @map("what_they_assess")
+  exemplarAnswer String? @map("exemplar_answer")
+  followUps      String? @map("follow_ups")
+
+  source    String   @default("Curated")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  competencies BehavioralQuestionCompetency[]
+  companies    BehavioralQuestionCompany[]
+  stories      StoryQuestion[]
+  attempts     BehavioralAttempt[]
+  mockInterviews MockInterview[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([category])
+  @@index([source])
+  @@map("behavioral_questions")
+}
+
+model Competency {
+  id          Int     @id @default(autoincrement())
+  userId      String? @map("user_id")
+  name        String
+  type        String  // "LeadershipPrinciple" | "Competency"
+  company     String? // e.g. "Amazon" for the 16 LPs, null for generic
+  description String?
+
+  questions BehavioralQuestionCompetency[]
+  stories   StoryCompetency[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([type])
+  @@map("competencies")
+}
+
+model StarStory {
+  id             Int      @id @default(autoincrement())
+  userId         String?  @map("user_id")
+  title          String
+  situation      String?
+  task           String?
+  action         String?
+  result         String?
+  metrics        String?
+  tags           String?
+  strengthRating Int?     @map("strength_rating") // 1-5 self-rated story strength
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  competencies StoryCompetency[]
+  questions    StoryQuestion[]
+  attempts     BehavioralAttempt[]
+  mockInterviews MockInterview[]
+
+  @@index([userId])
+  @@map("star_stories")
+}
+
+model BehavioralQuestionCompetency {
+  id           Int     @id @default(autoincrement())
+  userId       String? @map("user_id")
+  questionId   Int     @map("question_id")
+  competencyId Int     @map("competency_id")
+
+  question   BehavioralQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  competency Competency         @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, competencyId])
+  @@index([userId])
+  @@index([questionId])
+  @@index([competencyId])
+  @@map("behavioral_question_competencies")
+}
+
+model BehavioralQuestionCompany {
+  id         Int     @id @default(autoincrement())
+  userId     String? @map("user_id")
+  questionId Int     @map("question_id")
+  companyId  Int     @map("company_id")
+
+  question BehavioralQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  company  CompanyCard        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, companyId])
+  @@index([userId])
+  @@index([questionId])
+  @@index([companyId])
+  @@map("behavioral_question_companies")
+}
+
+model StoryCompetency {
+  id           Int     @id @default(autoincrement())
+  userId       String? @map("user_id")
+  storyId      Int     @map("story_id")
+  competencyId Int     @map("competency_id")
+
+  story      StarStory  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  competency Competency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, competencyId])
+  @@index([userId])
+  @@index([storyId])
+  @@index([competencyId])
+  @@map("story_competencies")
+}
+
+model StoryQuestion {
+  id         Int     @id @default(autoincrement())
+  userId     String? @map("user_id")
+  storyId    Int     @map("story_id")
+  questionId Int     @map("question_id")
+
+  story    StarStory          @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  question BehavioralQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, questionId])
+  @@index([userId])
+  @@index([storyId])
+  @@index([questionId])
+  @@map("story_questions")
+}
+
+model BehavioralAttempt {
+  id               Int      @id @default(autoincrement())
+  userId           String?  @map("user_id")
+  questionId       Int      @map("question_id")
+  storyId          Int?     @map("story_id")
+  attemptNumber    Int      @map("attempt_number")
+  attemptType      String   @default("First") @map("attempt_type")
+  mode             String   @default("practice") // "practice" | "mock"
+  timeSpentSeconds Int      @map("time_spent_seconds")
+  status           String   // "completed" | "partial" | "abandoned"
+  submittedAt      DateTime @map("submitted_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // STAR rubric dimensions (1-5 each)
+  situationScore   Int?    @map("situation_score")
+  taskScore        Int?    @map("task_score")
+  actionScore      Int?    @map("action_score") // specificity + ownership ("I" vs "we")
+  resultScore      Int?    @map("result_score")
+  structureScore   Int?    @map("structure_score")
+  signalScore      Int?    @map("signal_score") // competency-signal strength
+  resultQuantified Boolean @default(false) @map("result_quantified")
+  overallScore     Float?  @map("overall_score") // auto-computed weighted mean (1-5)
+
+  usedNotes      Boolean @default(false) @map("used_notes")
+  reflectionNote String? @map("reflection_note")
+
+  question      BehavioralQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  story         StarStory?           @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  revisions     BehavioralRevision[]
+  mockInterview MockInterview?
+
+  @@index([userId])
+  @@index([questionId])
+  @@index([submittedAt])
+  @@index([status])
+  @@index([questionId, status, submittedAt])
+  @@map("behavioral_attempts")
+}
+
+model BehavioralRevision {
+  id             Int       @id @default(autoincrement())
+  userId         String?   @map("user_id")
+  attemptId      Int       @map("attempt_id")
+  intervalLevel  Int       @default(0) @map("interval_level")
+  nextReviewDate DateTime  @map("next_review_date")
+  completed      Boolean   @default(false)
+  completedAt    DateTime? @map("completed_at")
+
+  wasSuccessful   Boolean? @map("was_successful")
+  overallScore    Float?   @map("overall_score")
+  confidenceLevel Int?     @map("confidence_level")
+  notes           String?
+
+  attempt BehavioralAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([nextReviewDate])
+  @@index([completed])
+  @@index([attemptId])
+  @@map("behavioral_revisions")
+}
