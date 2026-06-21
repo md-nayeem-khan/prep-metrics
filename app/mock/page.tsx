@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { format, parseISO } from "date-fns";
+import { formatInTimeZone } from "@/lib/datetime/tz";
+import { useTimezone } from "@/components/providers/timezone-provider";
 import {
   AlertCircle,
   Calendar,
@@ -81,6 +82,7 @@ const questionDifficulty = (i: ApiMockInterview): string | null =>
 
 export default function MockPage() {
   const router = useRouter();
+  const { timezone } = useTimezone();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -466,7 +468,7 @@ export default function MockPage() {
                             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                               <span className="inline-flex items-center gap-1">
                                 <Calendar className="h-3.5 w-3.5" />
-                                {format(parseISO(interview.date), "MMM d, yyyy")}
+                                {formatInTimeZone(new Date(interview.date), timezone, { month: "short", day: "numeric", year: "numeric" })}
                               </span>
                               <span className="inline-flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5" /> Limit: {Math.round(interview.timeLimit / 60)}m

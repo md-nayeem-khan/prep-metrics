@@ -1,8 +1,16 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { calculateDailyProgressSnapshot } from '@/lib/analytics/daily-progress-metrics'
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000
+import {
+  dayKey,
+  startOfDayInstant,
+  endOfDayExclusiveInstant,
+  addDays,
+  getDateWindow,
+  calculateCurrentStreakFromSolvedDays,
+  calculateLongestStreakFromSolvedDays,
+} from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -13,94 +21,19 @@ async function getPrismaClient() {
   return prisma
 }
 
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * DAY_IN_MS)
-}
-
-function toUtcDateKey(date: Date): string {
-  return startOfUtcDay(date).toISOString().slice(0, 10)
-}
-
-function getUtcDateWindow(days: number, now = new Date()) {
-  const safeDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 30
-  const endDate = startOfUtcDay(now)
-  const endExclusive = addUtcDays(endDate, 1)
-  const startDate = addUtcDays(endDate, -safeDays + 1)
-
-  return { startDate, endDate, endExclusive }
-}
-
-function parseUtcDateKey(dateKey: string): Date {
-  const [year, month, day] = dateKey.split('-').map(Number)
-  return new Date(Date.UTC(year, month - 1, day))
-}
-
-function getDayRange(date: Date) {
-  const dayStart = startOfUtcDay(date)
-  const dayEndExclusive = addUtcDays(dayStart, 1)
-
-  return { dayStart, dayEndExclusive }
-}
-
-function calculateCurrentUtcStreakFromSolvedDays(solvedDayKeys: Set<string>, now = new Date()) {
-  let streak = 0
-  let cursor = startOfUtcDay(now)
-
-  while (true) {
-    const dayKey = toUtcDateKey(cursor)
-    if (!solvedDayKeys.has(dayKey)) {
-      break
-    }
-
-    streak += 1
-    cursor = addUtcDays(cursor, -1)
-  }
-
-  return streak
-}
-
-function calculateLongestUtcStreakFromSolvedDays(solvedDayKeys: Set<string>) {
-  const sortedKeys = Array.from(solvedDayKeys).sort()
-  if (sortedKeys.length === 0) return 0
-
-  let longest = 1
-  let running = 1
-
-  for (let i = 1; i < sortedKeys.length; i += 1) {
-    const previous = parseUtcDateKey(sortedKeys[i - 1])
-    const current = parseUtcDateKey(sortedKeys[i])
-    const deltaDays = (current.getTime() - previous.getTime()) / DAY_IN_MS
-
-    if (deltaDays === 1) {
-      running += 1
-      if (running > longest) longest = running
-    } else {
-      running = 1
-    }
-  }
-
-  return longest
-}
-
-async function findDailyProgressForDate(prisma: any, date: Date) {
-  const { dayStart, dayEndExclusive } = getDayRange(date)
-
+async function findDailyProgressForDate(prisma: any, date: Date, tz: string) {
   return prisma.dailyProgress.findFirst({
     where: {
       date: {
-        gte: dayStart,
-        lt: dayEndExclusive,
+        gte: startOfDayInstant(date, tz),
+        lt: endOfDayExclusiveInstant(date, tz),
       },
     },
   })
 }
 
-// Helper function to calculate streaks
-function calculateStreaks(dailyProgress: Array<{ date: Date; problemsSolved: number }>) {
+// Helper function to calculate streaks, bucketed by the user's timezone.
+function calculateStreaks(dailyProgress: Array<{ date: Date; problemsSolved: number }>, tz: string) {
   if (dailyProgress.length === 0) {
     return { currentStreak: 0, longestStreak: 0, isActiveToday: false }
   }
@@ -108,7 +41,7 @@ function calculateStreaks(dailyProgress: Array<{ date: Date; problemsSolved: num
   const solvedDayKeys = new Set(
     dailyProgress
       .filter(day => day.problemsSolved > 0)
-      .map(day => toUtcDateKey(new Date(day.date)))
+      .map(day => dayKey(new Date(day.date), tz))
   )
 
   if (solvedDayKeys.size === 0) {
@@ -116,10 +49,10 @@ function calculateStreaks(dailyProgress: Array<{ date: Date; problemsSolved: num
   }
 
   const now = new Date()
-  const todayKey = toUtcDateKey(now)
+  const todayKey = dayKey(now, tz)
   const isActiveToday = solvedDayKeys.has(todayKey)
-  const currentStreak = calculateCurrentUtcStreakFromSolvedDays(solvedDayKeys, now)
-  const longestStreak = calculateLongestUtcStreakFromSolvedDays(solvedDayKeys)
+  const currentStreak = calculateCurrentStreakFromSolvedDays(solvedDayKeys, tz, now)
+  const longestStreak = calculateLongestStreakFromSolvedDays(solvedDayKeys)
 
   return { currentStreak, longestStreak, isActiveToday }
 }
@@ -128,6 +61,7 @@ function calculateStreaks(dailyProgress: Array<{ date: Date; problemsSolved: num
 export async function GET(request: NextRequest) {
   try {
     const prisma = await getPrismaClient()
+    const tz = await getUserTimezone()
     const searchParams = request.nextUrl.searchParams
     const requestedDays = parseInt(searchParams.get('days') || '30', 10)
     const days = Math.min(Number.isFinite(requestedDays) && requestedDays > 0 ? requestedDays : 30, 365)
@@ -135,7 +69,7 @@ export async function GET(request: NextRequest) {
     const format = searchParams.get('format') || 'detailed' // 'detailed' | 'calendar'
 
     // Calculate date range
-    const { startDate, endDate, endExclusive } = getUtcDateWindow(days)
+    const { startDate, endDate, endExclusive } = getDateWindow(days, tz)
 
     // Get daily progress data
     const dailyProgress = await prisma.dailyProgress.findMany({
@@ -176,7 +110,7 @@ export async function GET(request: NextRequest) {
     // Create a map of existing data
     const progressMap = new Map(
       dailyProgress.map(day => [
-        toUtcDateKey(new Date(day.date)),
+        dayKey(new Date(day.date), tz),
         day
       ])
     )
@@ -184,14 +118,14 @@ export async function GET(request: NextRequest) {
     // Fill in missing days with zero data
     const completeData = []
     let currentDate = new Date(startDate)
-    
+
     while (currentDate < endExclusive) {
-      const dateKey = toUtcDateKey(currentDate)
+      const dateKey = dayKey(currentDate, tz)
       const existingData = progressMap.get(dateKey)
-      
+
       if (existingData) {
         completeData.push({
-          date: startOfUtcDay(new Date(existingData.date)),
+          date: startOfDayInstant(new Date(existingData.date), tz),
           problemsSolved: existingData.problemsSolved,
           totalTimeSpent: existingData.totalTimeSpent,
           patternsWorked: existingData.patternsWorked,
@@ -199,15 +133,15 @@ export async function GET(request: NextRequest) {
         })
       } else {
         completeData.push({
-          date: startOfUtcDay(currentDate),
+          date: startOfDayInstant(currentDate, tz),
           problemsSolved: 0,
           totalTimeSpent: 0,
           patternsWorked: 0,
           mockInterviews: 0
         })
       }
-      
-      currentDate = addUtcDays(currentDate, 1)
+
+      currentDate = addDays(currentDate, 1, tz)
     }
 
     // Calculate streaks if requested
@@ -221,7 +155,7 @@ export async function GET(request: NextRequest) {
         orderBy: { date: 'asc' }
       })
 
-      streakData = calculateStreaks(allTimeProgress)
+      streakData = calculateStreaks(allTimeProgress, tz)
     }
 
     // Calculate summary statistics
@@ -234,21 +168,21 @@ export async function GET(request: NextRequest) {
     // Recent trend analysis (last 7 days vs previous 7 days)
     const recentDays = completeData.slice(-7)
     const previousDays = completeData.slice(-14, -7)
-    
+
     const recentProblems = recentDays.reduce((sum, day) => sum + day.problemsSolved, 0)
     const previousProblems = previousDays.reduce((sum, day) => sum + day.problemsSolved, 0)
-    
-    const trendPercentage = previousProblems > 0 
-      ? ((recentProblems - previousProblems) / previousProblems) * 100 
+
+    const trendPercentage = previousProblems > 0
+      ? ((recentProblems - previousProblems) / previousProblems) * 100
       : recentProblems > 0 ? 100 : 0
 
     // Format output based on requested format
     if (format === 'calendar') {
       // Calendar format for heatmap visualization
       const calendarData = completeData.map(day => ({
-        date: toUtcDateKey(day.date),
+        date: dayKey(day.date, tz),
         count: day.problemsSolved,
-        level: day.problemsSolved === 0 ? 0 : 
+        level: day.problemsSolved === 0 ? 0 :
                day.problemsSolved <= 2 ? 1 :
                day.problemsSolved <= 4 ? 2 :
                day.problemsSolved <= 6 ? 3 : 4
@@ -273,7 +207,7 @@ export async function GET(request: NextRequest) {
     // Detailed format
     const response = {
       data: completeData.map(day => ({
-        date: toUtcDateKey(day.date),
+        date: dayKey(day.date, tz),
         problemsSolved: day.problemsSolved,
         totalTimeMinutes: Math.round(day.totalTimeSpent / 60),
         patternsWorked: day.patternsWorked,
@@ -283,8 +217,8 @@ export async function GET(request: NextRequest) {
       ...(streakData && { streak: streakData }),
       summary: {
         dateRange: {
-          start: toUtcDateKey(startDate),
-          end: toUtcDateKey(endDate),
+          start: dayKey(startDate, tz),
+          end: dayKey(endDate, tz),
           days: completeData.length
         },
         totals: {
@@ -311,7 +245,7 @@ export async function GET(request: NextRequest) {
 
     // Generate insights and recommendations
     const insights = []
-    
+
     if (streakData && streakData.currentStreak >= 7) {
       insights.push(`🔥 Amazing ${streakData.currentStreak}-day streak! Keep the momentum going!`)
     } else if (streakData && streakData.currentStreak > 0) {
@@ -352,6 +286,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const prisma = await getPrismaClient()
+    const tz = await getUserTimezone()
     const body = await request.json()
     const {
       date = new Date(),
@@ -373,8 +308,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Validation failed', details: validationErrors }, { status: 400 })
     }
 
-    const normalizedDate = startOfUtcDay(new Date(date))
-    const existingProgress = await findDailyProgressForDate(prisma, normalizedDate)
+    const normalizedDate = startOfDayInstant(new Date(date), tz)
+    const existingProgress = await findDailyProgressForDate(prisma, normalizedDate, tz)
 
     // Update or create daily progress record
     const updatedProgress = existingProgress
@@ -397,9 +332,9 @@ export async function POST(request: NextRequest) {
           },
         })
 
-    return NextResponse.json({ 
-      success: true, 
-      progress: updatedProgress 
+    return NextResponse.json({
+      success: true,
+      progress: updatedProgress
     }, { status: 201 })
   } catch (error) {
     console.error('Error updating daily progress:', error)
@@ -414,11 +349,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const prisma = await getPrismaClient()
+    const tz = await getUserTimezone()
     const searchParams = request.nextUrl.searchParams
     const requestedDays = parseInt(searchParams.get('days') || '30', 10)
     const days = Number.isFinite(requestedDays) && requestedDays > 0 ? requestedDays : 30
 
-    const { startDate, endDate, endExclusive } = getUtcDateWindow(days)
+    const { startDate, endDate, endExclusive } = getDateWindow(days, tz)
 
     // Get all submissions in the date range
     const submissions = await prisma.submission.findMany({
@@ -444,9 +380,9 @@ export async function PUT(request: NextRequest) {
 
     // Group submissions by date
     const submissionsByDate = new Map<string, any[]>()
-    
+
     submissions.forEach(submission => {
-      const dateKey = toUtcDateKey(new Date(submission.submittedAt))
+      const dateKey = dayKey(new Date(submission.submittedAt), tz)
       if (!submissionsByDate.has(dateKey)) {
         submissionsByDate.set(dateKey, [])
       }
@@ -455,19 +391,17 @@ export async function PUT(request: NextRequest) {
 
     // Recalculate daily progress for each day
     const updatedDays = []
-    
+
     for (const [dateKey, daySubmissions] of submissionsByDate.entries()) {
-      const date = parseUtcDateKey(dateKey)
-      
       const dailySnapshot = calculateDailyProgressSnapshot(daySubmissions)
 
       // Update database
-      const normalizedDate = startOfUtcDay(date)
-      const dayEnd = addUtcDays(normalizedDate, 1)
+      const normalizedDate = startOfDayInstant(dateKey, tz)
+      const dayEnd = endOfDayExclusiveInstant(dateKey, tz)
       const mockInterviews = await prisma.mockInterview.count({
         where: { date: { gte: normalizedDate, lt: dayEnd } },
       })
-      const existingProgress = await findDailyProgressForDate(prisma, normalizedDate)
+      const existingProgress = await findDailyProgressForDate(prisma, normalizedDate, tz)
 
       const updatedProgress = existingProgress
         ? await prisma.dailyProgress.update({
@@ -497,8 +431,8 @@ export async function PUT(request: NextRequest) {
       message: `Recalculated progress for ${updatedDays.length} days`,
       updatedDays: updatedDays.length,
       dateRange: {
-        start: toUtcDateKey(startDate),
-        end: toUtcDateKey(endDate)
+        start: dayKey(startDate, tz),
+        end: dayKey(endDate, tz)
       }
     })
   } catch (error) {

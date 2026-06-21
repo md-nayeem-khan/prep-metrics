@@ -7,6 +7,8 @@ import {
   READINESS_READY_THRESHOLD,
   type CompanyReadiness,
 } from '@/types'
+import { getDateWindow } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -23,16 +25,14 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const timeframe = searchParams.get('timeframe') // 'week', 'month', 'all'
 
-    // Build date filter for timeframe
+    // Build date filter for timeframe, anchored to the user's local day boundaries.
+    const tz = await getUserTimezone()
+    const weekStart = getDateWindow(7, tz).startDate
     const submissionWhere: any = {}
     if (timeframe === 'week') {
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      submissionWhere.submittedAt = { gte: weekAgo }
+      submissionWhere.submittedAt = { gte: weekStart }
     } else if (timeframe === 'month') {
-      const monthAgo = new Date()
-      monthAgo.setMonth(monthAgo.getMonth() - 1)
-      submissionWhere.submittedAt = { gte: monthAgo }
+      submissionWhere.submittedAt = { gte: getDateWindow(30, tz).startDate }
     }
 
     const companyCards = await prisma.companyCard.findMany({
@@ -169,9 +169,7 @@ export async function GET(request: NextRequest) {
           difficulty,
           coverageRate: totalProblems > 0 ? solvedProblems / totalProblems : 0,
           recentActivity: allSubmissions.filter((s: any) => {
-            const weekAgo = new Date()
-            weekAgo.setDate(weekAgo.getDate() - 7)
-            return new Date(s.submittedAt) >= weekAgo
+            return new Date(s.submittedAt) >= weekStart
           }).length
         }
       })

@@ -14,6 +14,7 @@ import { DataTableColumnHeader } from "@/components/ui/table/data-table-column-h
 import { cn } from "@/lib/utils";
 import { difficultyBadge, solvedBadge } from "@/lib/status-colors";
 import { ProblemCellAction } from "@/components/problems/cell-action";
+import { dayKey, relativeDayLabel, formatInTimeZone } from "@/lib/datetime/tz";
 
 export interface ProblemRow {
   id: number;
@@ -34,17 +35,19 @@ export interface ProblemRow {
   lastAttempt: string | null;
 }
 
-function formatDate(dateString: string | null) {
+function formatDate(dateString: string | null, tz: string) {
   if (!dateString) return "Never";
   const date = new Date(dateString);
-  const now = new Date();
-  const diffDays = Math.floor(
-    (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+  const label = relativeDayLabel(date, tz);
+  if (label === "Today" || label === "Yesterday") return label;
+  const todayKey = dayKey(new Date(), tz);
+  const dateKey = dayKey(date, tz);
+  // Days between (positive = in the past), computed on local day keys.
+  const diffDays = Math.round(
+    (Date.parse(`${todayKey}T00:00:00Z`) - Date.parse(`${dateKey}T00:00:00Z`)) / 86400000,
   );
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (diffDays > 0 && diffDays < 7) return `${diffDays}d ago`;
+  return formatInTimeZone(date, tz, { month: "short", day: "numeric" });
 }
 
 function formatMinutes(seconds?: number) {
@@ -55,11 +58,13 @@ function formatMinutes(seconds?: number) {
 interface GetColumnsOptions {
   onEdit: (problem: ProblemRow) => void;
   onDelete: (problem: ProblemRow) => void;
+  timezone: string;
 }
 
 export function getProblemColumns({
   onEdit,
   onDelete,
+  timezone,
 }: GetColumnsOptions): ColumnDef<ProblemRow>[] {
   return [
     {
@@ -208,7 +213,7 @@ export function getProblemColumns({
         return (
           <span className="text-muted-foreground text-xs">
             {problem.lastAttempt
-              ? `${formatDate(problem.lastAttempt)}${minutes ? ` · ${minutes}` : ""}`
+              ? `${formatDate(problem.lastAttempt, timezone)}${minutes ? ` · ${minutes}` : ""}`
               : "Never"}
           </span>
         );

@@ -6,8 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RotateCcw, Calendar, AlertCircle } from "lucide-react";
-import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import Link from "next/link";
+import { formatInTimeZone, relativeDayLabel } from "@/lib/datetime/tz";
+import { useTimezone } from "@/components/providers/timezone-provider";
 
 interface RevisionItem {
   id: string;
@@ -18,19 +19,18 @@ interface RevisionItem {
   isOverdue: boolean;
 }
 
-function getDateLabel(dateStr: string, isOverdue: boolean) {
+function getDateLabel(dateStr: string, isOverdue: boolean, tz: string) {
   if (isOverdue) return "Overdue";
   try {
-    const date = parseISO(dateStr);
-    if (isToday(date)) return "Today";
-    if (isTomorrow(date)) return "Tomorrow";
-    return format(date, "MMM d");
+    const date = new Date(dateStr);
+    return relativeDayLabel(date, tz) ?? formatInTimeZone(date, tz, { month: "short", day: "numeric" });
   } catch {
     return "Unknown";
   }
 }
 
 export function RevisionQueueCard() {
+  const { timezone } = useTimezone();
   const [revisions, setRevisions] = useState<RevisionItem[]>([]);
   const [upcomingCount, setUpcomingCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -143,7 +143,7 @@ export function RevisionQueueCard() {
                       className="text-xs"
                     >
                       <Calendar className="mr-1 h-2.5 w-2.5" />
-                      {getDateLabel(rev.nextReviewDate, rev.isOverdue)}
+                      {getDateLabel(rev.nextReviewDate, rev.isOverdue, timezone)}
                     </Badge>
                   </div>
                 </div>

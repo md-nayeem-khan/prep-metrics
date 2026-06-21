@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const dbUser = await authPrisma.user.findUnique({
     where: { id: user.sub },
-    select: { id: true, email: true },
+    select: { id: true, email: true, timezone: true },
   });
 
   if (!dbUser) {
@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     data: {
       id: dbUser.id,
       email: dbUser.email,
+      timezone: dbUser.timezone,
     },
   });
 }

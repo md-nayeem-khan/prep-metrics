@@ -25,7 +25,8 @@ import {
   Calendar,
   BarChart3,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatInTimeZone } from "@/lib/datetime/tz";
+import { useTimezone } from "@/components/providers/timezone-provider";
 
 interface RevisionHistoryItem {
   id: number;
@@ -64,6 +65,7 @@ export function RevisionHistoryModal({
   problemTitle,
   triggerButton,
 }: RevisionHistoryModalProps) {
+  const { timezone } = useTimezone();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<RevisionHistoryItem[]>([]);
@@ -212,7 +214,7 @@ export function RevisionHistoryModal({
                             </Badge>
                             <Badge variant="outline">Level {revision.intervalLevel + 1}</Badge>
                             <span className="text-sm text-muted-foreground">
-                              {format(new Date(revision.completedAt), 'MMM d, h:mm a')}
+                              {formatInTimeZone(new Date(revision.completedAt), timezone, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                             </span>
                           </div>
                         </div>

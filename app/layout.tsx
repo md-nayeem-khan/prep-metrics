@@ -7,6 +7,9 @@ import { SonnerToaster } from "@/components/ui/sonner-toaster";
 import { ThemeProvider } from "next-themes";
 import { ActiveThemeProvider } from "@/components/themes/active-theme-provider";
 import { DEFAULT_THEME, isValidTheme } from "@/components/themes/theme.config";
+import { TimezoneProvider } from "@/components/providers/timezone-provider";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
+import { isValidTimeZone } from "@/lib/datetime/tz";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { cookies } from "next/headers";
 
@@ -15,7 +18,7 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AlgoMetrics - Interview Preparation Analytics Dashboard",
+  title: "PrepMetrics - Interview Preparation Analytics Dashboard",
   description:
     "Track competitive programming problems and improve interview preparation with pattern mastery insights and analytics",
 };
@@ -30,6 +33,11 @@ export default async function RootLayout({
   const activeTheme = isValidTheme(cookieTheme)
     ? (cookieTheme as string)
     : DEFAULT_THEME;
+
+  const cookieTimezone = cookieStore.get("user_tz")?.value;
+  const initialTimezone = isValidTimeZone(cookieTimezone)
+    ? (cookieTimezone as string)
+    : undefined;
 
   return (
     <html
@@ -47,10 +55,13 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <ActiveThemeProvider initialTheme={activeTheme}>
-              <TooltipProvider delayDuration={300}>
-                {children}
-                <SonnerToaster />
-              </TooltipProvider>
+              <TimezoneProvider initialTimezone={initialTimezone}>
+                <TooltipProvider delayDuration={300}>
+                  <NavigationProgress />
+                  {children}
+                  <SonnerToaster />
+                </TooltipProvider>
+              </TimezoneProvider>
             </ActiveThemeProvider>
           </ThemeProvider>
         </NuqsAdapter>

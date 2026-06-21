@@ -1,6 +1,6 @@
-# AlgoMetrics
+# PrepMetrics
 
-AlgoMetrics - Interview Preparation Analytics Dashboard for competitive programming practice with FAANG-level tracking and goal management.
+PrepMetrics - Interview Preparation Analytics Dashboard for competitive programming practice with FAANG-level tracking and goal management.
 
 ## Features
 

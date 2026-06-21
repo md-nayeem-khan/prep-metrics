@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { dayKey, addDayKey, getDateWindow } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 // Common mistake categories and their patterns
 const MISTAKE_CATEGORIES = {
@@ -42,10 +44,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '30')
-    
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-    startDate.setHours(0, 0, 0, 0)
+
+    const tz = await getUserTimezone()
+    const { startDate } = getDateWindow(days, tz)
 
     // Get all submissions with mistakes from the period
     const submissions = await prisma.submission.findMany({
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
     const insights = generateMistakeInsights(mistakeCategories, repeatedMistakes, submissions)
 
     // Get mistake trends over time
-    const mistakeTrends = getMistakeTrends(submissions, days)
+    const mistakeTrends = getMistakeTrends(submissions, days, tz)
 
     return NextResponse.json({
       period: {
@@ -277,17 +278,16 @@ function generateMistakeInsights(categories: any, repeatedMistakes: any[], submi
   return insights.slice(0, 5) // Return top 5 insights
 }
 
-function getMistakeTrends(submissions: any[], days: number) {
+function getMistakeTrends(submissions: any[], days: number, tz: string) {
   const trends: Record<string, number> = {}
-  const daysAgo = Array.from({ length: Math.min(days, 14) }, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - i)
-    return date.toISOString().split('T')[0]
-  }).reverse()
+  const todayKey = dayKey(new Date(), tz)
+  const daysAgo = Array.from({ length: Math.min(days, 14) }, (_, i) =>
+    addDayKey(todayKey, -i)
+  ).reverse()
 
   daysAgo.forEach(day => {
-    trends[day] = submissions.filter(s => 
-      s.submittedAt.toISOString().split('T')[0] === day
+    trends[day] = submissions.filter(s =>
+      dayKey(new Date(s.submittedAt), tz) === day
     ).length
   })
 

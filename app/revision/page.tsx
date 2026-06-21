@@ -14,9 +14,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, parseISO, isToday, isTomorrow, addDays } from "date-fns";
 import { PageContainer } from "@/components/layout/page-container";
 import { cn } from "@/lib/utils";
+import {
+  dayKey,
+  addDays as addTzDays,
+  startOfDayInstant,
+  formatInTimeZone,
+  relativeDayLabel,
+} from "@/lib/datetime/tz";
+import { useTimezone } from "@/components/providers/timezone-provider";
 
 interface RevisionItem {
   id: number;
@@ -37,13 +44,11 @@ const DIFF_COLORS: Record<string, string> = {
   Hard: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300",
 };
 
-function getDateLabel(dateStr: string, isOverdue: boolean) {
+function getDateLabel(dateStr: string, isOverdue: boolean, tz: string) {
   if (isOverdue) return "Overdue";
   try {
-    const date = parseISO(dateStr);
-    if (isToday(date)) return "Today";
-    if (isTomorrow(date)) return "Tomorrow";
-    return format(date, "MMM d");
+    const date = new Date(dateStr);
+    return relativeDayLabel(date, tz) ?? formatInTimeZone(date, tz, { month: "short", day: "numeric" });
   } catch {
     return "Unknown";
   }
@@ -51,6 +56,7 @@ function getDateLabel(dateStr: string, isOverdue: boolean) {
 
 export default function RevisionPage() {
   const router = useRouter();
+  const { timezone } = useTimezone();
   const [revisions, setRevisions] = useState<RevisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,8 +68,7 @@ export default function RevisionPage() {
         if (!response.ok) throw new Error("Failed to fetch revisions");
         const data = await response.json();
         const all = [...(data.dueToday || []), ...(data.upcoming || [])];
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
+        const startOfToday = startOfDayInstant(new Date(), timezone);
         setRevisions(
           all.map((item: { id: number; submission?: { problem?: { id?: number; title?: string; patterns?: Array<{ pattern?: { name?: string } }>; difficulty?: string; company?: string } }; problemId?: number; nextReviewDate: string; intervalLevel?: number; repetitionCount?: number }) => ({
             id: item.id,
@@ -85,16 +90,15 @@ export default function RevisionPage() {
       }
     }
     fetchRevisions();
-  }, []);
+  }, [timezone]);
 
+  const todayKey = dayKey(new Date(), timezone);
   const todayRevisions = revisions.filter(
-    (r) => isToday(parseISO(r.dueDate)) || r.isOverdue
+    (r) => dayKey(new Date(r.dueDate), timezone) === todayKey || r.isOverdue
   );
   const upcomingRevisions = revisions.filter((r) => {
-    const d = parseISO(r.dueDate);
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    return d >= addDays(startOfToday, 1) && d < addDays(startOfToday, 8);
+    const d = new Date(r.dueDate);
+    return d >= addTzDays(new Date(), 1, timezone) && d < addTzDays(new Date(), 8, timezone);
   });
 
   if (loading) {
@@ -246,7 +250,7 @@ export default function RevisionPage() {
                       </span>
                       <Badge variant="outline" className="text-xs">{r.pattern}</Badge>
                       <span className="text-xs text-muted-foreground">
-                        {getDateLabel(r.dueDate, r.isOverdue)}
+                        {getDateLabel(r.dueDate, r.isOverdue, timezone)}
                       </span>
                     </div>
                   </div>

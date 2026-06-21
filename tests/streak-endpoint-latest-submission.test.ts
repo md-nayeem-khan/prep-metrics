@@ -6,6 +6,11 @@ import { prisma } from "../lib/prisma";
 
 test("streak endpoint weekly stats use latest submission per problem", async () => {
   const originalSubmissionFindMany = (prisma.submission as any).findMany;
+  const originalDailyProgressFindMany = (prisma.dailyProgress as any).findMany;
+
+  // The streak route reads DailyProgress for streak + calendar; this test only asserts weeklyStats
+  // (derived from submissions), so an empty DailyProgress set is sufficient.
+  (prisma.dailyProgress as any).findMany = async () => [];
 
   (prisma.submission as any).findMany = async (args: any) => {
     // First call in GET: solved submissions for streak/calendar.
@@ -67,5 +72,6 @@ test("streak endpoint weekly stats use latest submission per problem", async () 
     assert.equal(body.weeklyStats.patternsWorked, 2);
   } finally {
     (prisma.submission as any).findMany = originalSubmissionFindMany;
+    (prisma.dailyProgress as any).findMany = originalDailyProgressFindMany;
   }
 });

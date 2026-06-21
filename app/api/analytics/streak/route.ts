@@ -8,6 +8,7 @@ import {
   calculateLongestStreakFromSolvedDays,
   toDateKey,
 } from '@/lib/analytics/streak-metrics'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 import { getLatestSubmissionsPerProblem } from '@/types'
 
 const MAX_DAYS = 365
@@ -21,6 +22,8 @@ export async function GET(request: NextRequest) {
       MAX_DAYS
     )
 
+    const tz = await getUserTimezone()
+
     // Use DailyProgress as the canonical source for streak calculation.
     // This avoids loading all solved submissions into memory — the DailyProgress
     // table already aggregates per-day activity and is orders of magnitude smaller.
@@ -30,29 +33,29 @@ export async function GET(request: NextRequest) {
         select: { date: true },
         orderBy: { date: 'asc' },
       }),
-      getWeeklyStats(),
+      getWeeklyStats(tz),
     ])
 
     const solvedDayKeys = new Set(
-      allProgressDays.map((d) => toDateKey(new Date(d.date)))
+      allProgressDays.map((d) => toDateKey(new Date(d.date), tz))
     )
 
-    const currentStreak = calculateCurrentStreakFromSolvedDays(solvedDayKeys)
+    const currentStreak = calculateCurrentStreakFromSolvedDays(solvedDayKeys, tz)
     const longestStreak = calculateLongestStreakFromSolvedDays(solvedDayKeys)
 
     // Build calendar data from DailyProgress for the requested window.
-    const { startDate, endExclusive } = getDateWindow(days)
+    const { startDate, endExclusive } = getDateWindow(days, tz)
     const windowProgress = await prisma.dailyProgress.findMany({
       where: { date: { gte: startDate, lt: endExclusive } },
       select: { date: true, problemsSolved: true, totalTimeSpent: true },
     })
     const dayMap = new Map(
       windowProgress.map((d) => [
-        toDateKey(new Date(d.date)),
+        toDateKey(new Date(d.date), tz),
         { count: d.problemsSolved, totalTime: d.totalTimeSpent },
       ])
     )
-    const calendarData = buildCalendarData(days, new Date(), dayMap)
+    const calendarData = buildCalendarData(days, new Date(), dayMap, tz)
 
     return NextResponse.json({
       currentStreak,
@@ -68,8 +71,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getWeeklyStats() {
-  const { startDate, endExclusive } = getDateWindow(7)
+async function getWeeklyStats(tz: string) {
+  const { startDate, endExclusive } = getDateWindow(7, tz)
 
   const weeklySubmissions = await prisma.submission.findMany({
     where: {

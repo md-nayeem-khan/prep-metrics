@@ -6,6 +6,7 @@ import {
   STAR_RUBRIC_KEYS,
   VALID_ATTEMPT_STATUSES,
 } from '@/lib/server/attempts'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 // POST /api/behavioral/attempts - Log a behavioral practice attempt (STAR self-rating)
 export async function POST(request: NextRequest) {
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
       timeSpentSeconds,
       status,
       submittedAt,
+      timezone: await getUserTimezone(),
       mode,
       attemptType,
       resultQuantified,

@@ -17,7 +17,7 @@ test("buildDailyMap aggregates multiple solved submissions on the same day", () 
     { submittedAt: new Date("2026-04-09T08:00:00.000Z"), timeSpentSeconds: 900 },
   ];
 
-  const dailyMap = buildDailyMap(submissions);
+  const dailyMap = buildDailyMap(submissions, "UTC");
 
   assert.deepEqual(dailyMap.get("2026-04-10"), { count: 2, totalTime: 3000 });
   assert.deepEqual(dailyMap.get("2026-04-09"), { count: 1, totalTime: 900 });
@@ -30,7 +30,7 @@ test("buildCalendarData returns full window with counts and total time", () => {
     ["2026-04-11", { count: 1, totalTime: 900 }],
   ]);
 
-  const data = buildCalendarData(3, now, dayMap);
+  const data = buildCalendarData(3, now, dayMap, "UTC");
 
   assert.equal(data.length, 3);
   assert.deepEqual(data[0], { date: "2026-04-10", count: 2, totalTime: 2400, level: 1 });
@@ -47,7 +47,7 @@ test("streak helpers compute current and longest streak from solved day keys", (
     "2026-04-12",
   ]);
 
-  const current = calculateCurrentStreakFromSolvedDays(solvedDayKeys, new Date("2026-04-12T12:00:00"));
+  const current = calculateCurrentStreakFromSolvedDays(solvedDayKeys, "UTC", new Date("2026-04-12T12:00:00Z"));
   const longest = calculateLongestStreakFromSolvedDays(solvedDayKeys);
 
   assert.equal(current, 3);
@@ -55,10 +55,10 @@ test("streak helpers compute current and longest streak from solved day keys", (
 });
 
 test("getDateWindow uses end-exclusive next day boundary to include full current day", () => {
-  const window = getDateWindow(7, new Date("2026-04-12T12:10:00"));
+  const window = getDateWindow(7, "UTC", new Date("2026-04-12T12:10:00Z"));
 
-  assert.equal(toDateKey(window.startDate), "2026-04-06");
-  assert.equal(toDateKey(window.endDate), "2026-04-12");
-  assert.equal(toDateKey(window.endExclusive), "2026-04-13");
+  assert.equal(toDateKey(window.startDate, "UTC"), "2026-04-06");
+  assert.equal(toDateKey(window.endDate, "UTC"), "2026-04-12");
+  assert.equal(toDateKey(window.endExclusive, "UTC"), "2026-04-13");
   assert.equal(window.endExclusive.getTime() - window.endDate.getTime(), 24 * 60 * 60 * 1000);
 });

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { type PatternStats } from '@/types'
 import { calculatePatternMetrics } from '@/lib/analytics/pattern-metrics'
+import { getDateWindow } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 // GET /api/analytics/patterns/confidence - Calculate pattern confidence levels
 export async function GET(request: NextRequest) {
@@ -13,16 +15,14 @@ export async function GET(request: NextRequest) {
     const companyIdParam = searchParams.get('companyId')
     const source = searchParams.get('source') // Optional filter by source
 
-    // Build date filter for timeframe
+    // Build date filter for timeframe, anchored to the user's local day boundaries.
     const submissionWhere: any = {}
     if (timeframe === 'week') {
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      submissionWhere.submittedAt = { gte: weekAgo }
+      const tz = await getUserTimezone()
+      submissionWhere.submittedAt = { gte: getDateWindow(7, tz).startDate }
     } else if (timeframe === 'month') {
-      const monthAgo = new Date()
-      monthAgo.setMonth(monthAgo.getMonth() - 1)
-      submissionWhere.submittedAt = { gte: monthAgo }
+      const tz = await getUserTimezone()
+      submissionWhere.submittedAt = { gte: getDateWindow(30, tz).startDate }
     }
 
     // Build problem filter

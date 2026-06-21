@@ -60,9 +60,10 @@ test("submissions POST advances a level-4 revision to level 5 (no regression fro
       assert.ok(createdRevision, "a next revision should be created");
       // Unified schedule: min(4 + 1, 5) = 5 (60-day interval). The old buggy cap produced 3.
       assert.equal(createdRevision.intervalLevel, 5);
+      // No auth header -> timezone resolves to UTC, so the due date is UTC midnight + interval days.
       const expected = new Date("2026-06-01T00:00:00.000Z");
-      expected.setDate(expected.getDate() + REVISION_INTERVALS[5]);
-      expected.setHours(0, 0, 0, 0);
+      expected.setUTCDate(expected.getUTCDate() + REVISION_INTERVALS[5]);
+      expected.setUTCHours(0, 0, 0, 0);
       assert.equal(new Date(createdRevision.nextReviewDate).getTime(), expected.getTime());
     }
   );
@@ -88,9 +89,10 @@ test("submissions POST on a first solve schedules an initial level-0 revision (+
       assert.equal(res.status, 201);
       assert.ok(createdRevision);
       assert.equal(createdRevision.intervalLevel, 0);
+      // No auth header -> timezone resolves to UTC, so the due date is UTC midnight + 1 day.
       const expected = new Date("2026-06-01T00:00:00.000Z");
-      expected.setDate(expected.getDate() + 1);
-      expected.setHours(0, 0, 0, 0);
+      expected.setUTCDate(expected.getUTCDate() + 1);
+      expected.setUTCHours(0, 0, 0, 0);
       assert.equal(new Date(createdRevision.nextReviewDate).getTime(), expected.getTime());
     }
   );

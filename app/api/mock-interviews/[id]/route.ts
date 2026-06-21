@@ -5,10 +5,10 @@ import {
   createBehavioralAttempt,
   SD_RUBRIC_KEYS,
   STAR_RUBRIC_KEYS,
-  startOfUtcDay,
-  addUtcDays,
   VALID_ATTEMPT_STATUSES,
 } from '@/lib/server/attempts'
+import { startOfDayInstant, endOfDayExclusiveInstant } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 const DETAIL_INCLUDE = {
   problem: { include: { patterns: { include: { pattern: true } } } },
@@ -92,10 +92,10 @@ export async function GET(
 }
 
 // Count-and-set the day's completed mock-interview counter (idempotent, non-fatal).
-async function bumpMockDailyProgress(date: Date) {
+async function bumpMockDailyProgress(date: Date, tz: string) {
   try {
-    const normalizedDate = startOfUtcDay(date)
-    const endOfDayExclusive = addUtcDays(normalizedDate, 1)
+    const normalizedDate = startOfDayInstant(date, tz)
+    const endOfDayExclusive = endOfDayExclusiveInstant(date, tz)
     const todayCount = await prisma.mockInterview.count({
       where: { status: 'completed', date: { gte: normalizedDate, lt: endOfDayExclusive } },
     })
@@ -130,6 +130,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Mock interview not found' }, { status: 404 })
     }
 
+    const tz = await getUserTimezone()
     const { timeTakenSeconds, notes } = body
     const status: string = body.status ?? 'completed'
     if (mock.type !== 'coding' && !(VALID_ATTEMPT_STATUSES as readonly string[]).includes(status)) {
@@ -144,6 +145,7 @@ export async function PUT(
         questionId: mock.systemDesignQuestionId as number,
         timeSpentSeconds: timeTakenSeconds ?? 0,
         status: status as 'completed' | 'partial' | 'abandoned',
+        timezone: tz,
         mode: 'mock',
         usedReference: !!body.usedReference,
         approachNote: body.approachNote ?? null,
@@ -161,7 +163,7 @@ export async function PUT(
           notes: notes ?? null,
         },
       })
-      await bumpMockDailyProgress(new Date(updated.date))
+      await bumpMockDailyProgress(new Date(updated.date), tz)
       return NextResponse.json(updated)
     }
 
@@ -175,6 +177,7 @@ export async function PUT(
         storyId,
         timeSpentSeconds: timeTakenSeconds ?? 0,
         status: status as 'completed' | 'partial' | 'abandoned',
+        timezone: tz,
         mode: 'mock',
         resultQuantified: !!body.resultQuantified,
         usedNotes: !!body.usedNotes,
@@ -194,7 +197,7 @@ export async function PUT(
           notes: notes ?? null,
         },
       })
-      await bumpMockDailyProgress(new Date(updated.date))
+      await bumpMockDailyProgress(new Date(updated.date), tz)
       return NextResponse.json(updated)
     }
 
@@ -218,7 +221,7 @@ export async function PUT(
         notes: notes ?? null,
       },
     })
-    await bumpMockDailyProgress(new Date(updated.date))
+    await bumpMockDailyProgress(new Date(updated.date), tz)
     return NextResponse.json(updated)
   } catch (error) {
     console.error('Error updating mock interview:', error)

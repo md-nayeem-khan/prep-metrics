@@ -6,6 +6,7 @@ type UserRow = {
   id: string;
   email: string;
   password_hash: string;
+  timezone: string;
 };
 
 function normalizeEmail(email: string): string {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const users = await authPrisma.$queryRaw<UserRow[]>`
-      SELECT id, email, password_hash
+      SELECT id, email, password_hash, timezone
       FROM users
       WHERE email = ${email}
       LIMIT 1
@@ -42,10 +43,20 @@ export async function POST(request: NextRequest) {
     const token = await createSessionToken(user.id, user.email);
     const response = NextResponse.json({
       success: true,
-      data: { id: user.id, email: user.email },
+      data: { id: user.id, email: user.email, timezone: user.timezone },
     });
 
     setAuthCookie(response, token);
+    // Non-httpOnly cookie so the client TimezoneProvider can render dates in the user's zone on the
+    // first paint after login (read server-side in app/layout.tsx).
+    response.cookies.set({
+      name: 'user_tz',
+      value: user.timezone ?? 'UTC',
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+    });
     return response;
   } catch (error) {
     console.error('Auth login error:', error);

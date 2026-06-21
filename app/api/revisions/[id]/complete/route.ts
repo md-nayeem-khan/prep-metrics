@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { REVISION_INTERVALS } from "@/lib/spaced-repetition";
+import { addDays } from "@/lib/datetime/tz";
+import { getUserTimezone } from "@/lib/server/user-timezone";
 
 // Validation schema for completion request
 const completeRevisionSchema = z.object({
@@ -63,9 +65,8 @@ export async function POST(
       ? Math.min(currentLevel + 1, REVISION_INTERVALS.length - 1)  // Progress if successful
       : Math.max(currentLevel - 1, 0);  // Regress if failed
 
-    const nextReviewDate = new Date();
-    nextReviewDate.setHours(0, 0, 0, 0);
-    nextReviewDate.setDate(nextReviewDate.getDate() + REVISION_INTERVALS[nextLevel]);
+    const tz = await getUserTimezone();
+    const nextReviewDate = addDays(new Date(), REVISION_INTERVALS[nextLevel], tz);
 
     // Update current revision
     const updatedRevision = await prisma.revision.update({

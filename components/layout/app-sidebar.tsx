@@ -63,7 +63,7 @@ export function AppSidebar() {
                   <Code2 className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">AlgoMetrics</span>
+                  <span className="truncate font-semibold">PrepMetrics</span>
                   <span className="truncate text-xs">Interview Prep</span>
                 </div>
               </Link>
