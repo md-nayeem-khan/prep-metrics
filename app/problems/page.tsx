@@ -38,6 +38,7 @@ import {
   getProblemColumns,
   type ProblemRow,
 } from "@/components/problems/columns";
+import { useTimezone } from "@/components/providers/timezone-provider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ const SORTABLE_IDS = ["title", "difficulty", "lastAttempt"];
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ProblemsPage() {
+  const { timezone } = useTimezone();
   // nuqs URL-synced server filters
   const [filters, setFilters] = useQueryStates(
     {
@@ -245,8 +247,9 @@ export default function ProblemsPage() {
           setDeletingProblem(problem as Problem);
           setIsDeleteModalOpen(true);
         },
+        timezone,
       }),
-    [],
+    [timezone],
   );
 
   const { table } = useDataTable({

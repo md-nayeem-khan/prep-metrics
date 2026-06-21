@@ -4,6 +4,11 @@ import assert from "node:assert/strict";
 import { GET as getRevisions, POST as createRevision } from "../app/api/revisions/route";
 import { POST as completeRevision } from "../app/api/revisions/[id]/complete/route";
 import { prisma } from "../lib/prisma";
+import { startOfDayInstant, addDays } from "../lib/datetime/tz";
+
+// The route handlers resolve the user's timezone from the x-authenticated-user-id header; the fake
+// requests below omit it, so getUserTimezone() falls back to "UTC". Assertions therefore check that
+// nextReviewDate is a UTC-midnight instant (getUTC* === 0), independent of the test runner's zone.
 
 test("completing a failed revision creates the next pending revision at a regressed level", async () => {
   const originalFindUnique = (prisma.revision as any).findUnique;
@@ -66,10 +71,10 @@ test("completing a failed revision creates the next pending revision at a regres
     assert.equal(capturedCreateData.previousRevisionId, 42);
 
     const scheduled = new Date(capturedCreateData.nextReviewDate);
-    assert.equal(scheduled.getHours(), 0);
-    assert.equal(scheduled.getMinutes(), 0);
-    assert.equal(scheduled.getSeconds(), 0);
-    assert.equal(scheduled.getMilliseconds(), 0);
+    assert.equal(scheduled.getUTCHours(), 0);
+    assert.equal(scheduled.getUTCMinutes(), 0);
+    assert.equal(scheduled.getUTCSeconds(), 0);
+    assert.equal(scheduled.getUTCMilliseconds(), 0);
   } finally {
     (prisma.revision as any).findUnique = originalFindUnique;
     (prisma.revision as any).update = originalUpdate;
@@ -82,14 +87,9 @@ test("revisions API buckets due and upcoming using stable day boundaries", async
   const originalGroupBy = (prisma.revision as any).groupBy;
   const originalCount = (prisma.revision as any).count;
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const startOfTomorrow = new Date(startOfToday);
-  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-  const endOfUpcomingWindow = new Date(startOfToday);
-  endOfUpcomingWindow.setDate(endOfUpcomingWindow.getDate() + 8);
+  const startOfToday = startOfDayInstant(new Date(), "UTC");
+  const startOfTomorrow = addDays(new Date(), 1, "UTC");
+  const endOfUpcomingWindow = addDays(new Date(), 8, "UTC");
 
   const revisions = [
     { id: 1, nextReviewDate: new Date(startOfToday.getTime() - 1), completed: false, intervalLevel: 0 },
@@ -145,7 +145,7 @@ test("revisions API buckets due and upcoming using stable day boundaries", async
   }
 });
 
-test("creating a revision without explicit date schedules at local midnight", async () => {
+test("creating a revision without explicit date schedules at timezone midnight", async () => {
   const originalFindUnique = (prisma.submission as any).findUnique;
   const originalCreate = (prisma.revision as any).create;
 
@@ -182,10 +182,10 @@ test("creating a revision without explicit date schedules at local midnight", as
     assert.equal(body.success, true);
 
     const scheduled = new Date(capturedCreateData.nextReviewDate);
-    assert.equal(scheduled.getHours(), 0);
-    assert.equal(scheduled.getMinutes(), 0);
-    assert.equal(scheduled.getSeconds(), 0);
-    assert.equal(scheduled.getMilliseconds(), 0);
+    assert.equal(scheduled.getUTCHours(), 0);
+    assert.equal(scheduled.getUTCMinutes(), 0);
+    assert.equal(scheduled.getUTCSeconds(), 0);
+    assert.equal(scheduled.getUTCMilliseconds(), 0);
   } finally {
     (prisma.submission as any).findUnique = originalFindUnique;
     (prisma.revision as any).create = originalCreate;

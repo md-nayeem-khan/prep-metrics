@@ -9,7 +9,6 @@ import {
   MessageSquare,
   Network,
   RotateCcw,
-  Settings,
   Target,
   Users,
 } from "lucide-react";
@@ -118,17 +117,6 @@ export const navGroups: NavGroup[] = [
         url: "/behavioral/competencies",
         icon: Users,
         shortcut: ["b", "c"],
-      },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      {
-        title: "Settings",
-        url: "/settings",
-        icon: Settings,
-        shortcut: ["s", "s"],
       },
     ],
   },

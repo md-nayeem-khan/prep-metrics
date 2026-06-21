@@ -1,15 +1,15 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { startOfDayInstant, addDays } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 export async function GET(request: NextRequest) {
   try {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    
+    const tz = await getUserTimezone()
+    const today = startOfDayInstant(new Date(), tz)
+    const tomorrow = addDays(new Date(), 1, tz)
+
     // Get today's revisions
     const todaysRevisions = await prisma.revision.findMany({
       where: {

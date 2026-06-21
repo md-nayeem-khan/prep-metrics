@@ -6,6 +6,7 @@ import { ArrowRight, BarChart3, Loader2, ShieldCheck, TimerReset, Code2 } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getSafeNextPath } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -32,7 +33,7 @@ const FEATURES = [
 export default function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") || "/dashboard";
+  const nextPath = getSafeNextPath(searchParams.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,9 +72,9 @@ export default function LoginPageClient() {
           <div>
             <div className="flex items-center gap-2 text-primary">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Code2 className="h-4 w-4" />
+                <Code2 className="h-4 w-4" aria-hidden />
               </div>
-              <span className="font-semibold">AlgoMetrics</span>
+              <span className="font-semibold">PrepMetrics</span>
             </div>
 
             <h1 className="mt-8 text-3xl font-bold leading-tight">
@@ -93,7 +94,7 @@ export default function LoginPageClient() {
                   className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-3"
                 >
                   <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4" aria-hidden />
                   </div>
                   <p className="text-sm font-medium">{label}</p>
                 </div>
@@ -109,13 +110,13 @@ export default function LoginPageClient() {
           <CardHeader>
             <div className="flex items-center gap-2 text-primary lg:hidden">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Code2 className="h-3.5 w-3.5" />
+                <Code2 className="h-3.5 w-3.5" aria-hidden />
               </div>
-              <span className="text-sm font-semibold">AlgoMetrics</span>
+              <span className="text-sm font-semibold">PrepMetrics</span>
             </div>
             <CardTitle className="text-2xl">Sign in</CardTitle>
             <CardDescription>
-              Use your account to access the AlgoMetrics dashboard.
+              Use your account to access the PrepMetrics dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -128,6 +129,7 @@ export default function LoginPageClient() {
                   autoComplete="email"
                   required
                   autoFocus
+                  aria-invalid={error ? true : undefined}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@email.com"
@@ -141,6 +143,7 @@ export default function LoginPageClient() {
                   type="password"
                   autoComplete="current-password"
                   required
+                  aria-invalid={error ? true : undefined}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
@@ -148,7 +151,11 @@ export default function LoginPageClient() {
               </div>
 
               {error && (
-                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                <p
+                  role="alert"
+                  aria-live="polite"
+                  className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                >
                   {error}
                 </p>
               )}
@@ -156,23 +163,19 @@ export default function LoginPageClient() {
               <Button type="submit" disabled={loading} className="w-full gap-2">
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                     Signing in…
                   </>
                 ) : (
                   <>
                     Continue to dashboard
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-4 w-4" aria-hidden />
                   </>
                 )}
               </Button>
             </form>
 
             <p className="mt-4 text-xs text-muted-foreground">
-              After sign-in, you will be redirected to{" "}
-              <span className="font-medium text-foreground">{nextPath}</span>.
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">
               Need access? Contact your admin to provision an account.
             </p>
           </CardContent>

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { AUTH_COOKIE_NAME, verifySessionToken } from '@/lib/auth-token';
+import { getSafeNextPath } from '@/lib/utils';
 
 const AUTH_PAGES = new Set(['/login']);
 const AUTH_API_PREFIX = '/api/auth';
@@ -37,8 +38,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAuthenticated && AUTH_PAGES.has(pathname)) {
-    const nextParam = request.nextUrl.searchParams.get('next');
-    const redirectPath = nextParam && nextParam.startsWith('/') ? nextParam : '/dashboard';
+    const redirectPath = getSafeNextPath(request.nextUrl.searchParams.get('next'));
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 

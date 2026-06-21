@@ -6,6 +6,8 @@ import {
   getLatestAttemptsPerQuestion,
 } from '@/lib/analytics/system-design-metrics'
 import { SD_TIME_BENCHMARKS, getSDBenchmarkKey } from '@/types/system-design'
+import { getDateWindow } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 // GET /api/system-design/analytics/readiness - FAANG system design readiness
 export async function GET(request: NextRequest) {
@@ -20,13 +22,11 @@ export async function GET(request: NextRequest) {
       where.question = { companies: { some: { companyId } } }
     }
     if (timeframe === 'week') {
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      where.submittedAt = { gte: weekAgo }
+      const tz = await getUserTimezone()
+      where.submittedAt = { gte: getDateWindow(7, tz).startDate }
     } else if (timeframe === 'month') {
-      const monthAgo = new Date()
-      monthAgo.setMonth(monthAgo.getMonth() - 1)
-      where.submittedAt = { gte: monthAgo }
+      const tz = await getUserTimezone()
+      where.submittedAt = { gte: getDateWindow(30, tz).startDate }
     }
 
     const attempts = await prisma.systemDesignAttempt.findMany({

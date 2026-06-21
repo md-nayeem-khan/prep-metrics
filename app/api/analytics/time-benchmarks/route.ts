@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { TIME_BENCHMARKS } from '@/types'
+import { getDateWindow } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 // GET /api/analytics/time-benchmarks - Analyze time performance against interview benchmarks
 export async function GET(request: NextRequest) {
@@ -12,16 +14,14 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get('source') // Optional filter by source
     const difficulty = searchParams.get('difficulty') // 'easy', 'medium', 'hard'
 
-    // Build date filter for timeframe
+    // Build date filter for timeframe, anchored to the user's local day boundaries.
     const submissionWhere: any = { status: 'solved' } // Only analyze solved problems
     if (timeframe === 'week') {
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      submissionWhere.submittedAt = { gte: weekAgo }
+      const tz = await getUserTimezone()
+      submissionWhere.submittedAt = { gte: getDateWindow(7, tz).startDate }
     } else if (timeframe === 'month') {
-      const monthAgo = new Date()
-      monthAgo.setMonth(monthAgo.getMonth() - 1)
-      submissionWhere.submittedAt = { gte: monthAgo }
+      const tz = await getUserTimezone()
+      submissionWhere.submittedAt = { gte: getDateWindow(30, tz).startDate }
     }
 
     // Build problem filter

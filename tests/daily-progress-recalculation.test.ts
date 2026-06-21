@@ -9,9 +9,12 @@ test("daily progress recalculation deduplicates solved problems by problemId", a
   const originalDailyProgressFindFirst = (prisma.dailyProgress as any).findFirst;
   const originalDailyProgressCreate = (prisma.dailyProgress as any).create;
   const originalDailyProgressUpdate = (prisma.dailyProgress as any).update;
+  const originalMockInterviewCount = (prisma.mockInterview as any).count;
 
   const createCalls: any[] = [];
   const updateCalls: any[] = [];
+
+  (prisma.mockInterview as any).count = async () => 0;
 
   (prisma.submission as any).findMany = async () => [
     {
@@ -75,5 +78,6 @@ test("daily progress recalculation deduplicates solved problems by problemId", a
     (prisma.dailyProgress as any).findFirst = originalDailyProgressFindFirst;
     (prisma.dailyProgress as any).create = originalDailyProgressCreate;
     (prisma.dailyProgress as any).update = originalDailyProgressUpdate;
+    (prisma.mockInterview as any).count = originalMockInterviewCount;
   }
 });

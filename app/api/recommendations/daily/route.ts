@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { startOfDayInstant, endOfDayExclusiveInstant } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 interface Recommendation {
   id: string
@@ -17,7 +19,8 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '10')
-    
+
+    const tz = await getUserTimezone()
     const recommendations: Recommendation[] = []
 
     // 1. Check for overdue revisions (HIGH PRIORITY)
@@ -177,17 +180,15 @@ export async function GET(request: Request) {
     }
 
     // 3. Check for today's revisions (MEDIUM PRIORITY)
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const todayEnd = new Date()
-    todayEnd.setHours(23, 59, 59, 999)
+    const todayStart = startOfDayInstant(now, tz)
+    const todayEndExclusive = endOfDayExclusiveInstant(now, tz)
 
     const todaysRevisions = await prisma.revision.findMany({
       where: {
         completed: false,
         nextReviewDate: {
           gte: todayStart,
-          lte: todayEnd
+          lt: todayEndExclusive
         }
       }
     })
@@ -299,13 +300,10 @@ export async function GET(request: Request) {
     }
 
     // 6. Daily variety recommendation (LOW PRIORITY)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
     const todaysSolves = await prisma.submission.findMany({
       where: {
         submittedAt: {
-          gte: today
+          gte: todayStart
         },
         status: 'solved'
       }

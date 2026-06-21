@@ -3,16 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calculateDailyProgressSnapshot } from '@/lib/analytics/daily-progress-metrics'
 import { REVISION_INTERVALS } from '@/lib/spaced-repetition'
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * DAY_IN_MS)
-}
+import { dayKey, startOfDayInstant, endOfDayExclusiveInstant, addDays } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,8 +53,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const tz = await getUserTimezone()
     const body = await request.json()
-    const { 
+    const {
       problemId, 
       timeSpentSeconds, 
       status, 
@@ -150,8 +143,8 @@ export async function POST(request: NextRequest) {
 
     // Update daily progress automatically
     try {
-      const normalizedDate = startOfUtcDay(new Date(submission.submittedAt))
-      const endOfDayExclusive = addUtcDays(normalizedDate, 1)
+      const normalizedDate = startOfDayInstant(new Date(submission.submittedAt), tz)
+      const endOfDayExclusive = endOfDayExclusiveInstant(new Date(submission.submittedAt), tz)
 
       // Get all submissions for today to calculate patterns worked
       const todaySubmissions = await prisma.submission.findMany({
@@ -266,9 +259,11 @@ export async function POST(request: NextRequest) {
           ? Math.min(baseLevel + 1, REVISION_INTERVALS.length - 1)
           : baseLevel
 
-        const nextReviewDate = new Date(submission.submittedAt)
-        nextReviewDate.setDate(nextReviewDate.getDate() + REVISION_INTERVALS[nextLevel])
-        nextReviewDate.setHours(0, 0, 0, 0)
+        const nextReviewDate = addDays(
+          dayKey(new Date(submission.submittedAt), tz),
+          REVISION_INTERVALS[nextLevel],
+          tz,
+        )
 
         await prisma.revision.create({
           data: {
@@ -290,9 +285,11 @@ export async function POST(request: NextRequest) {
         })
 
         if (!existingPendingRevision) {
-          const reviewDate = new Date(submission.submittedAt)
-          reviewDate.setDate(reviewDate.getDate() + REVISION_INTERVALS[0])
-          reviewDate.setHours(0, 0, 0, 0)
+          const reviewDate = addDays(
+            dayKey(new Date(submission.submittedAt), tz),
+            REVISION_INTERVALS[0],
+            tz,
+          )
 
           await prisma.revision.create({
             data: {

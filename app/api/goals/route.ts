@@ -8,6 +8,8 @@ import {
   getLatestAttemptsPerQuestion,
 } from '@/lib/analytics/system-design-metrics';
 import { calculateCompetencyCoverage } from '@/lib/analytics/behavioral-metrics';
+import { dayKey, addDayKey } from '@/lib/datetime/tz';
+import { getUserTimezone } from '@/lib/server/user-timezone';
 
 // GET /api/goals - Fetch all goals with optional filtering
 export async function GET(request: NextRequest) {
@@ -35,9 +37,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate progress for each goal
+    const tz = await getUserTimezone();
     const goalsWithProgress = await Promise.all(
       goals.map(async (goal) => {
-        const currentValue = await calculateCurrentValue(goal);
+        const currentValue = await calculateCurrentValue(goal, tz);
         // speedImprovement is "lower is better" (reduce avg time TO targetValue minutes), so the
         // generic currentValue/target ratio is backwards. Treat at-or-below target as achieved.
         let progressPercentage = 0;
@@ -163,7 +166,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to calculate current value based on goal type
-async function calculateCurrentValue(goal: any): Promise<number> {
+async function calculateCurrentValue(goal: any, tz: string = 'UTC'): Promise<number> {
   switch (goal.type) {
     case 'problemCount':
       // Count problems solved since goal start date
@@ -228,16 +231,14 @@ async function calculateCurrentValue(goal: any): Promise<number> {
       });
 
       let currentStreak = 0;
-      let checkDate = new Date();
-      checkDate.setHours(0, 0, 0, 0);
+      let checkKey = dayKey(new Date(), tz);
 
       for (const progress of dailyProgress) {
-        const progressDate = new Date(progress.date);
-        progressDate.setHours(0, 0, 0, 0);
+        const progressKey = dayKey(new Date(progress.date), tz);
 
-        if (progressDate.getTime() === checkDate.getTime()) {
+        if (progressKey === checkKey) {
           currentStreak++;
-          checkDate.setDate(checkDate.getDate() - 1);
+          checkKey = addDayKey(checkKey, -1);
         } else {
           break;
         }

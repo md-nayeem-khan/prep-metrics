@@ -10,13 +10,9 @@
 import { prisma } from "@/lib/prisma";
 import { calculateSDOverallScore } from "@/lib/analytics/system-design-metrics";
 import { calculateBehavioralOverallScore } from "@/lib/analytics/behavioral-metrics";
+import { startOfDayInstant, endOfDayExclusiveInstant } from "@/lib/datetime/tz";
 import type { SDRubricKey } from "@/types/system-design";
 import type { STARRubricKey } from "@/types/behavioral";
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
-export const startOfUtcDay = (date: Date) =>
-  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-export const addUtcDays = (date: Date, days: number) => new Date(date.getTime() + days * DAY_IN_MS);
 
 export const SD_RUBRIC_KEYS: SDRubricKey[] = [
   "requirementsScore", "estimationScore", "highLevelDesignScore", "dataModelApiScore",
@@ -38,11 +34,12 @@ export const VALID_ATTEMPT_STATUSES: AttemptStatus[] = ["completed", "partial", 
 async function setDailyProgressCount(
   submittedAt: Date,
   field: "systemDesignAttempts" | "behavioralAttempts",
+  tz: string,
   count: () => Promise<number>,
 ) {
   try {
-    const normalizedDate = startOfUtcDay(submittedAt);
-    const endOfDayExclusive = addUtcDays(normalizedDate, 1);
+    const normalizedDate = startOfDayInstant(submittedAt, tz);
+    const endOfDayExclusive = endOfDayExclusiveInstant(submittedAt, tz);
     const todayCount = await count();
     const existing = await prisma.dailyProgress.findFirst({
       where: { date: { gte: normalizedDate, lt: endOfDayExclusive } },
@@ -62,6 +59,7 @@ export interface CreateSDAttemptInput {
   timeSpentSeconds: number;
   status?: AttemptStatus;
   submittedAt?: string | Date;
+  timezone?: string;
   mode?: "practice" | "mock";
   attemptType?: string;
   usedReference?: boolean;
@@ -72,7 +70,7 @@ export interface CreateSDAttemptInput {
 
 export async function createSystemDesignAttempt(input: CreateSDAttemptInput) {
   const {
-    questionId, timeSpentSeconds, status = "completed", submittedAt,
+    questionId, timeSpentSeconds, status = "completed", submittedAt, timezone = "UTC",
     mode = "practice", attemptType = "First", usedReference = false,
     approachNote = null, mistakeNote = null, rubric,
   } = input;
@@ -110,10 +108,14 @@ export async function createSystemDesignAttempt(input: CreateSDAttemptInput) {
     },
   });
 
-  await setDailyProgressCount(new Date(attempt.submittedAt), "systemDesignAttempts", () => {
-    const normalizedDate = startOfUtcDay(new Date(attempt.submittedAt));
+  await setDailyProgressCount(new Date(attempt.submittedAt), "systemDesignAttempts", timezone, () => {
     return prisma.systemDesignAttempt.count({
-      where: { submittedAt: { gte: normalizedDate, lt: addUtcDays(normalizedDate, 1) } },
+      where: {
+        submittedAt: {
+          gte: startOfDayInstant(new Date(attempt.submittedAt), timezone),
+          lt: endOfDayExclusiveInstant(new Date(attempt.submittedAt), timezone),
+        },
+      },
     });
   });
 
@@ -126,6 +128,7 @@ export interface CreateBehavioralAttemptInput {
   timeSpentSeconds: number;
   status?: AttemptStatus;
   submittedAt?: string | Date;
+  timezone?: string;
   mode?: "practice" | "mock";
   attemptType?: string;
   resultQuantified?: boolean;
@@ -136,7 +139,7 @@ export interface CreateBehavioralAttemptInput {
 
 export async function createBehavioralAttempt(input: CreateBehavioralAttemptInput) {
   const {
-    questionId, storyId = null, timeSpentSeconds, status = "completed", submittedAt,
+    questionId, storyId = null, timeSpentSeconds, status = "completed", submittedAt, timezone = "UTC",
     mode = "practice", attemptType = "First", resultQuantified = false,
     usedNotes = false, reflectionNote = null, rubric,
   } = input;
@@ -173,10 +176,14 @@ export async function createBehavioralAttempt(input: CreateBehavioralAttemptInpu
     },
   });
 
-  await setDailyProgressCount(new Date(attempt.submittedAt), "behavioralAttempts", () => {
-    const normalizedDate = startOfUtcDay(new Date(attempt.submittedAt));
+  await setDailyProgressCount(new Date(attempt.submittedAt), "behavioralAttempts", timezone, () => {
     return prisma.behavioralAttempt.count({
-      where: { submittedAt: { gte: normalizedDate, lt: addUtcDays(normalizedDate, 1) } },
+      where: {
+        submittedAt: {
+          gte: startOfDayInstant(new Date(attempt.submittedAt), timezone),
+          lt: endOfDayExclusiveInstant(new Date(attempt.submittedAt), timezone),
+        },
+      },
     });
   });
 

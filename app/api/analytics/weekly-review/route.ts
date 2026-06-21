@@ -1,15 +1,16 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getDateWindow } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '7')
-    
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-    startDate.setHours(0, 0, 0, 0)
+
+    const tz = await getUserTimezone()
+    const { startDate } = getDateWindow(days, tz)
 
     // Get all submissions from the period
     const submissions = await prisma.submission.findMany({

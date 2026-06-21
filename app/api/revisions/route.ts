@@ -2,23 +2,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { REVISION_INTERVALS } from '@/lib/spaced-repetition'
+import { startOfDayInstant, addDays } from '@/lib/datetime/tz'
+import { getUserTimezone } from '@/lib/server/user-timezone'
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const includeCompleted = searchParams.get('includeCompleted') === 'true'
-    
-    // Use local day boundaries so "today" and "this week" match user expectations.
+
+    // Use the user's timezone for day boundaries so "today" and "this week" match expectations.
+    const tz = await getUserTimezone()
     const now = new Date()
-    const startOfToday = new Date(now)
-    startOfToday.setHours(0, 0, 0, 0)
-
-    const startOfTomorrow = new Date(startOfToday)
-    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1)
-
+    const startOfToday = startOfDayInstant(now, tz)
+    const startOfTomorrow = addDays(now, 1, tz)
     // Upcoming window: tomorrow through the next 7 days.
-    const endOfUpcomingWindow = new Date(startOfToday)
-    endOfUpcomingWindow.setDate(endOfUpcomingWindow.getDate() + 8)
+    const endOfUpcomingWindow = addDays(now, 8, tz)
     
     // Get all revisions that are due today or overdue
     const dueRevisions = await prisma.revision.findMany({
@@ -152,13 +150,10 @@ export async function POST(request: NextRequest) {
     // Calculate next review date if not provided
     let calculatedReviewDate = nextReviewDate
     if (!calculatedReviewDate) {
+      const tz = await getUserTimezone()
       const level = intervalLevel ?? 0
       const daysToAdd = REVISION_INTERVALS[level] ?? 1
-      
-      const reviewDate = new Date()
-      reviewDate.setHours(0, 0, 0, 0)
-      reviewDate.setDate(reviewDate.getDate() + daysToAdd)
-      calculatedReviewDate = reviewDate
+      calculatedReviewDate = addDays(new Date(), daysToAdd, tz)
     }
 
     // Create revision entry
@@ -211,10 +206,9 @@ export async function scheduleRevision(submissionId: number, wasSuccessful: bool
       return existingRevision
     }
 
-    // Calculate first revision date (1 day after solving)
-    const reviewDate = new Date()
-    reviewDate.setHours(0, 0, 0, 0)
-    reviewDate.setDate(reviewDate.getDate() + 1)
+    // Calculate first revision date (1 day after solving), in the user's timezone.
+    const tz = await getUserTimezone()
+    const reviewDate = addDays(new Date(), 1, tz)
 
     const revision = await prisma.revision.create({
       data: {
