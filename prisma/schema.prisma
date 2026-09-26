@@ -11,6 +11,18 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model ImportReceipt {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  requestId   String   @map("request_id")
+  payloadHash String   @map("payload_hash")
+  result      String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, requestId])
+  @@map("import_receipts")
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique

@@ -12,7 +12,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getCommonPinningStyles } from "@/lib/data-table";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
@@ -25,81 +24,76 @@ export function DataTable<TData>({
   children,
 }: DataTableProps<TData>) {
   return (
-    <div className="flex flex-1 flex-col space-y-4">
+    <div className="flex flex-col space-y-4">
       {children}
-      <div className="relative flex flex-1">
-        <div className="absolute inset-0 flex overflow-hidden rounded-lg border">
-          <ScrollArea className="h-full w-full">
-            <Table>
-              <TableHeader className="bg-muted sticky top-0 z-10">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        colSpan={header.colSpan}
-                        style={{
-                          ...getCommonPinningStyles({
-                            column: header.column,
-                            withBorder: header.column.id !== "actions",
-                          }),
-                        }}
-                        className={cn(header.column.getIsPinned() && "bg-muted")}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader className="bg-muted">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    style={{
+                      ...getCommonPinningStyles({
+                        column: header.column,
+                        withBorder: header.column.id !== "actions",
+                      }),
+                    }}
+                    className={cn(header.column.getIsPinned() && "bg-muted")}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
                 ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                      className="group"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          style={{
-                            ...getCommonPinningStyles({
-                              column: cell.column,
-                              withBorder: cell.column.id !== "actions",
-                            }),
-                          }}
-                          className={cn(cell.column.getIsPinned() && "bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted")}
-                          {...(cell.column.getIsPinned() ? { "data-pinned": "true" } : {})}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className="group"
+                >
+                  {row.getVisibleCells().map((cell) => (
                     <TableCell
-                      colSpan={table.getAllColumns().length}
-                      className="h-24 text-center"
+                      key={cell.id}
+                      style={{
+                        ...getCommonPinningStyles({
+                          column: cell.column,
+                          withBorder: cell.column.id !== "actions",
+                        }),
+                      }}
+                      className={cn(cell.column.getIsPinned() && "bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted")}
+                      {...(cell.column.getIsPinned() ? { "data-pinned": "true" } : {})}
                     >
-                      No results.
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={table.getAllColumns().length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
       <div className="flex flex-col gap-2.5">
         <DataTablePagination table={table} />

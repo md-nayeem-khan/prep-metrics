@@ -1,5 +1,7 @@
 "use client";
 
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Bookmark, AlertCircle, Pencil, Trash2, Star } from "lucide-react";
@@ -144,6 +146,7 @@ export default function StoryBankPage() {
 
   return (
     <PageContainer
+      importAction={<CsvImportDialog entity="stories" onImported={fetchAll} />}
       pageTitle="STAR Story Bank"
       pageDescription="Reusable, quantified stories mapped to competencies — the backbone of behavioral prep"
       pageHeaderAction={<Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Add Story</Button>}

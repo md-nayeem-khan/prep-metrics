@@ -1,5 +1,6 @@
 "use client";
 
+import { PROBLEM_PLATFORMS } from "@/lib/problem-platforms";
 import { useEffect, useState } from "react";
 import { Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,14 +37,7 @@ interface CompanyOption {
 
 const difficultyOptions = ["Easy", "Medium", "Hard"];
 
-const platformOptions = [
-  "LeetCode",
-  "HackerRank",
-  "CodeForces",
-  "AtCoder",
-  "GeeksforGeeks",
-  "Other",
-];
+const platformOptions = PROBLEM_PLATFORMS;
 
 const fallbackPatterns = [
   "Two Pointers", "Sliding Window", "Binary Search", "Dynamic Programming",

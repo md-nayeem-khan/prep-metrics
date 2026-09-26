@@ -13,7 +13,11 @@
     "db:migrate:sqlite-to-postgres": "tsx scripts/migrate-sqlite-to-postgres.ts",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
-    "db:backfill:daily-progress": "tsx scripts/backfill-daily-progress.ts"
+    "db:backfill:daily-progress": "tsx scripts/backfill-daily-progress.ts",
+    "test:import:db": "tsx --test tests/integration/csv-import.integration.ts",
+    "test:import:e2e": "tsx scripts/test-import-e2e.ts csv-import.spec.ts",
+    "test:create:db": "tsx --test tests/integration/system-design-create.integration.ts",
+    "test:create:e2e": "tsx scripts/test-import-e2e.ts system-design-create.spec.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -32,6 +36,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "csv-parse": "^7.0.3",
+    "csv-stringify": "^6.9.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
     "jose": "^6.1.0",
@@ -59,7 +65,10 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@playwright/test": "^1.63.0",
+    "@types/pg": "^8.23.1",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.3"
+    "eslint-config-next": "^16.2.3",
+    "pg": "^8.23.0"
   }
 }

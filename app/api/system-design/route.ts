@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { createSystemDesignResponse } from '@/lib/server/system-design-create-http'
 
 // GET /api/system-design - List system design questions with filters
 export async function GET(request: NextRequest) {
@@ -88,62 +89,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/system-design - Create a new system design question
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const {
-      slug,
-      title,
-      difficulty,
-      category,
-      prompt,
-      functionalRequirements,
-      nonFunctionalRequirements,
-      estimationNotes,
-      referenceSolution,
-      commonPitfalls,
-      source = 'Company',
-      url,
-      notes,
-      topicIds = [],
-      companyIds = [],
-    } = body
-
-    if (!slug || !title || !difficulty || !category || !prompt) {
-      return NextResponse.json(
-        { error: 'Missing required fields: slug, title, difficulty, category, prompt' },
-        { status: 400 }
-      )
-    }
-
-    const question = await prisma.systemDesignQuestion.create({
-      data: {
-        slug,
-        title,
-        difficulty,
-        category,
-        prompt,
-        functionalRequirements: functionalRequirements || null,
-        nonFunctionalRequirements: nonFunctionalRequirements || null,
-        estimationNotes: estimationNotes || null,
-        referenceSolution: referenceSolution || null,
-        commonPitfalls: commonPitfalls || null,
-        source,
-        url: url || null,
-        notes: notes || null,
-        topics: { create: (topicIds || []).map((topicId: number) => ({ topicId })) },
-        companies: { create: (companyIds || []).map((companyId: number) => ({ companyId })) },
-      },
-      include: {
-        topics: { include: { topic: true } },
-        companies: { include: { company: { select: { id: true, name: true } } } },
-      },
-    })
-
-    return NextResponse.json({ question }, { status: 201 })
-  } catch (error) {
-    console.error('Error creating system design question:', error)
-    return NextResponse.json({ error: 'Failed to create system design question' }, { status: 500 })
-  }
+// POST /api/system-design - Authenticated, validated, atomic creation.
+export { createQuestion as POST };
+async function createQuestion(request: NextRequest) {
+  return createSystemDesignResponse(request, 'question');
 }

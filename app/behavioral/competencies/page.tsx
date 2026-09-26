@@ -1,5 +1,7 @@
 "use client";
 
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useEffect, useState } from "react";
 import { AlertCircle, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,9 +65,11 @@ export default function CompetenciesPage() {
   const [data, setData] = useState<CoverageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [importRevision, setImportRevision] = useState(0);
   const [typeFilter, setTypeFilter] = useState("all");
 
   useEffect(() => {
+    setError(null);
     setLoading(true);
     const params = new URLSearchParams();
     if (typeFilter !== "all") params.set("type", typeFilter);
@@ -74,13 +78,14 @@ export default function CompetenciesPage() {
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [typeFilter]);
+  }, [typeFilter, importRevision]);
 
   const lps = data?.coverage.filter((c) => c.type === "LeadershipPrinciple") ?? [];
   const generic = data?.coverage.filter((c) => c.type !== "LeadershipPrinciple") ?? [];
 
   return (
     <PageContainer
+      importAction={<CsvImportDialog entity="competencies" onImported={() => setImportRevision(n => n + 1)} />}
       pageTitle="Competency Coverage"
       pageDescription="Where you have strong, practiced STAR stories — and where the gaps are"
       pageHeaderAction={

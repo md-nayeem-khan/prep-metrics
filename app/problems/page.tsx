@@ -1,5 +1,7 @@
 "use client";
 
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Filter,
@@ -290,6 +292,7 @@ export default function ProblemsPage() {
 
   return (
     <PageContainer
+      importAction={<CsvImportDialog entity="problems" onImported={async () => { await Promise.all([fetchProblems(), fetchFilterOptions()]); }} />}
       pageTitle="Problems"
       pageDescription="Track and manage your interview preparation problems"
       pageHeaderAction={<AddProblemForm />}

@@ -1,5 +1,7 @@
 "use client";
 
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, BarChart3, AlertCircle, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -377,6 +379,7 @@ export default function CompanyPage() {
 
   return (
     <PageContainer
+      importAction={<CsvImportDialog entity="companies" onImported={fetchData} />}
       pageTitle="Company Readiness"
       pageDescription="Track your preparation progress for top companies"
       pageHeaderAction={

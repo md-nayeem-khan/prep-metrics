@@ -272,33 +272,10 @@ test("company DELETE is blocked (409) when problems are linked, allowed otherwis
 // ---------------------------------------------------------------------------
 // CSV import
 // ---------------------------------------------------------------------------
-test("CSV import creates new problems with pattern links and skips duplicates", async () => {
-  const csv = [
-    "Platform,Problem ID,Title,Difficulty,URL,Tags,Patterns",
-    "leetcode,1,Two Sum,Easy,,Blind75,Hashing",
-    "leetcode,2,Existing,Medium,,,",
-  ].join("\n");
-  let problemPatternCreates = 0;
-  let problemCreates = 0;
-  await withStubs(
-    [
-      [prisma.problem as any, "findUnique", async (a: any) => (a.where.platform_problemId.problemId === "2" ? { id: 99 } : null)],
-      [prisma.problem as any, "create", async () => { problemCreates++; return { id: 1000 + problemCreates }; }],
-      [prisma.problemTag as any, "create", async () => ({})],
-      [prisma.pattern as any, "findFirst", async () => ({ id: 7, name: "Hashing" })],
-      [prisma.problemPattern as any, "create", async () => { problemPatternCreates++; return {}; }],
-    ],
-    async () => {
-      const file = { text: async () => csv };
-      const req = { formData: async () => ({ get: () => file }) };
-      const res = await csvPOST(req as any);
-      const body = await res.json();
-      assert.equal(body.imported, 1);
-      assert.equal(body.skipped, 1);
-      assert.equal(problemCreates, 1);
-      assert.equal(problemPatternCreates, 1);
-    }
-  );
+test("legacy CSV import requires authentication and cannot write immediately", async () => {
+  const { NextRequest } = await import("next/server");
+  const response = await csvPOST(new NextRequest("http://localhost/api/export/csv", { method: "POST" }));
+  assert.equal(response.status, 401);
 });
 
 // ---------------------------------------------------------------------------
