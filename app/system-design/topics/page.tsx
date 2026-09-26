@@ -1,5 +1,8 @@
 "use client";
 
+import { CreateTopicDialog } from "@/components/forms/create-topic-dialog";
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useEffect, useState } from "react";
 import { AlertCircle, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,17 +40,23 @@ export default function SystemDesignTopicsPage() {
   const [data, setData] = useState<TopicsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [importRevision, setImportRevision] = useState(0);
 
   useEffect(() => {
-    fetch("/api/system-design/analytics/topics")
+    const controller = new AbortController();
+    setError(null);
+    fetch("/api/system-design/analytics/topics", { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load topics"))))
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .then(result => { if (!controller.signal.aborted) setData(result); })
+      .catch((e) => { if (!controller.signal.aborted) setError(e.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [importRevision]);
 
   return (
     <PageContainer
+      pageHeaderAction={<CreateTopicDialog onCreated={() => setImportRevision(n => n + 1)} />}
+      importAction={<CsvImportDialog entity="topics" onImported={() => setImportRevision(n => n + 1)} />}
       pageTitle="System Design Topics"
       pageDescription="Mastery across core building-block topics, derived from your rubric self-ratings"
     >
@@ -94,6 +103,10 @@ export default function SystemDesignTopicsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {data.topics.length === 0 && <TableRow><TableCell colSpan={6} className="py-12 text-center">
+                    <div className="flex flex-col items-center gap-3"><p className="text-muted-foreground">Add a topic to start organizing your question bank.</p>
+                    <CreateTopicDialog onCreated={() => setImportRevision(n => n + 1)} /></div>
+                  </TableCell></TableRow>}
                   {data.topics.map((t) => (
                     <TableRow key={t.topic}>
                       <TableCell className="font-medium">{t.topic}</TableCell>

@@ -6,7 +6,7 @@ interface PageContainerProps {
   pageTitle?: string;
   pageDescription?: string;
   pageHeaderAction?: React.ReactNode;
-  scrollable?: boolean;
+  importAction?: React.ReactNode;
 }
 
 export function PageContainer({
@@ -14,25 +14,19 @@ export function PageContainer({
   pageTitle,
   pageDescription,
   pageHeaderAction,
-  scrollable = false,
+  importAction,
 }: PageContainerProps) {
-  const hasHeader = pageTitle || pageHeaderAction;
+  const hasHeader = pageTitle || pageHeaderAction || importAction;
 
   return (
-    <div
-      className={
-        scrollable
-          ? "flex flex-1 flex-col px-4 pt-2 pb-4 md:px-6 md:pt-4 overflow-auto"
-          : "flex flex-1 flex-col px-4 pt-2 pb-4 md:px-6 md:pt-4"
-      }
-    >
+    <div className="flex flex-1 flex-col px-4 pt-2 pb-4 md:px-6 md:pt-4">
       {hasHeader && (
-        <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           {pageTitle && (
             <Heading title={pageTitle} description={pageDescription} />
           )}
-          {pageHeaderAction && (
-            <div className="shrink-0">{pageHeaderAction}</div>
+          {(pageHeaderAction || importAction) && (
+            <div className="flex shrink-0 flex-wrap justify-end gap-2">{importAction}{pageHeaderAction}</div>
           )}
         </div>
       )}

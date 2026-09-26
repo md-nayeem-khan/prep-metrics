@@ -129,7 +129,7 @@ export function RevisionQueueCard() {
           </div>
         ) : (
           <>
-            <div className="space-y-2 max-h-56 overflow-y-auto">
+            <div className="space-y-2">
               {revisions.map((rev) => (
                 <div
                   key={rev.id}

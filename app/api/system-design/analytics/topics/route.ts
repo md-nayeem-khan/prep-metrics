@@ -17,6 +17,17 @@ export async function GET(request: NextRequest) {
     })
 
     const metrics = calculateSDTopicMetrics(questions, isNaN(minQuestions) ? 1 : minQuestions)
+    // Catalog entries are useful before any question is linked to them. Preserve
+    // calculated metrics and add only genuinely unlinked topics with zero values.
+    const catalog = await prisma.systemDesignTopic.findMany({ orderBy: { name: 'asc' } })
+    const linkedNames = new Set(questions.flatMap(q => q.topics.map(t => t.topic.name)))
+    for (const topic of catalog) {
+      if (!linkedNames.has(topic.name)) metrics.push({
+        topic: topic.name, category: topic.category, totalQuestions: 0,
+        attempted: 0, avgOverallScore: 0, referenceUsageRate: 0,
+        confidence: 'Weak', masteryPercentage: 0, questionIds: [], attemptedQuestionIds: [],
+      })
+    }
 
     const byCategory: Record<string, { total: number; mastery: number; count: number }> = {}
     for (const m of metrics) {

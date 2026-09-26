@@ -6,8 +6,6 @@ import {
   Flag,
   Layers,
   LayoutDashboard,
-  MessageSquare,
-  Network,
   RotateCcw,
   Target,
   Users,
@@ -86,7 +84,7 @@ export const navGroups: NavGroup[] = [
       {
         title: "Questions",
         url: "/system-design",
-        icon: Network,
+        icon: BookOpen,
         shortcut: ["x", "x"],
       },
       {
@@ -103,7 +101,7 @@ export const navGroups: NavGroup[] = [
       {
         title: "Questions",
         url: "/behavioral",
-        icon: MessageSquare,
+        icon: BookOpen,
         shortcut: ["b", "b"],
       },
       {

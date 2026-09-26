@@ -1,5 +1,7 @@
 "use client";
 
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Check, Brain, BarChart3, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -339,6 +341,7 @@ export default function PatternsPage() {
 
   return (
     <PageContainer
+      importAction={<CsvImportDialog entity="patterns" onImported={fetchPatterns} />}
       pageTitle="Algorithm Patterns"
       pageDescription="Master the building blocks of coding interviews"
       pageHeaderAction={

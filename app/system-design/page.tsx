@@ -1,5 +1,8 @@
 "use client";
 
+import { CreateQuestionSheet } from "@/components/forms/create-question-sheet";
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Filter, RefreshCw, Network, AlertCircle, ChevronRight } from "lucide-react";
@@ -60,14 +63,16 @@ export default function SystemDesignPage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ difficulty: "", category: "", companyId: "" });
 
-  useEffect(() => {
-    fetch("/api/system-design/filters")
+  const fetchFilterOptions = useCallback(async () => {
+    await fetch("/api/system-design/filters")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d) setOptions({ categories: d.categories || [], companies: d.companies || [] });
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => { void fetchFilterOptions(); }, [fetchFilterOptions]);
 
   const fetchQuestions = useCallback(async () => {
     setLoading(true);
@@ -97,6 +102,8 @@ export default function SystemDesignPage() {
 
   return (
     <PageContainer
+      pageHeaderAction={<CreateQuestionSheet onCreated={async () => { await Promise.all([fetchQuestions(), fetchFilterOptions()]); }} />}
+      importAction={<CsvImportDialog entity="system-design" onImported={async () => { await Promise.all([fetchQuestions(), fetchFilterOptions()]); }} />}
       pageTitle="System Design"
       pageDescription="FAANG system design question bank with framework checklists and rubric-driven readiness"
     >
@@ -163,7 +170,8 @@ export default function SystemDesignPage() {
           <Card><CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <Network className="text-muted-foreground/40 h-10 w-10" />
             <p className="text-sm font-medium">{hasActiveFilters ? "No questions match the filters" : "No questions yet"}</p>
-            <p className="text-muted-foreground text-xs">{hasActiveFilters ? "Try adjusting your filters" : "Run the seed to load the FAANG question bank"}</p>
+            <p className="text-muted-foreground text-xs">{hasActiveFilters ? "Try adjusting your filters" : "Add your first question or import a question bank"}</p>
+            <CreateQuestionSheet onCreated={async () => { await Promise.all([fetchQuestions(), fetchFilterOptions()]); }} />
           </CardContent></Card>
         ) : (
           <Card>

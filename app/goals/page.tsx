@@ -1,5 +1,7 @@
 "use client";
 
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -84,9 +86,12 @@ function getStatusCardClasses(goal: GoalCardState) {
   return "bg-gradient-to-br from-violet-50/90 via-purple-50/60 to-fuchsia-50/90 dark:from-violet-950/40 dark:via-purple-900/20 dark:to-fuchsia-950/40 border-2 border-violet-200/60 dark:border-violet-800/60";
 }
 
+// Persisted goal dates are calendar dates encoded at UTC midnight.
 function toDateInputValue(value?: Date | string) {
-  if (!value) return "";
-  const date = new Date(value);
+  return value ? new Date(value).toISOString().slice(0, 10) : "";
+}
+
+function localDateInputValue(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
@@ -96,6 +101,7 @@ function toDateInputValue(value?: Date | string) {
 function formatHumanDate(value?: Date | string) {
   if (!value) return "-";
   return new Date(value).toLocaleDateString("en-US", {
+    timeZone: "UTC",
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -103,7 +109,7 @@ function formatHumanDate(value?: Date | string) {
 }
 
 function createDefaultGoalForm(): GoalForm {
-  const today = toDateInputValue(new Date());
+  const today = localDateInputValue(new Date());
   const nextMonth = new Date();
   nextMonth.setMonth(nextMonth.getMonth() + 1);
 
@@ -111,13 +117,13 @@ function createDefaultGoalForm(): GoalForm {
     title: "",
     description: "",
     startDate: today,
-    deadline: toDateInputValue(nextMonth),
+    deadline: localDateInputValue(nextMonth),
     priority: "medium",
     milestones: [
       {
         title: "",
         description: "",
-        dueDate: toDateInputValue(nextMonth),
+        dueDate: localDateInputValue(nextMonth),
         targetValue: 1,
       },
     ],
@@ -133,10 +139,10 @@ function deriveGoalState(goal: GoalProgress): GoalCardState {
       ? Math.round((completedMilestones / totalMilestones) * 100)
       : Math.min(100, Math.max(0, goal.progressPercentage || 0));
 
-  const now = new Date();
+  const today = localDateInputValue(new Date());
   const hasOverdueMilestone =
-    goal.milestones?.some((m) => !m.completed && new Date(m.dueDate) < now) ?? false;
-  const deadlinePassed = new Date(goal.deadline) < now;
+    goal.milestones?.some((m) => !m.completed && new Date(m.dueDate).toISOString().slice(0, 10) < today) ?? false;
+  const deadlinePassed = new Date(goal.deadline).toISOString().slice(0, 10) < today;
 
   const isDerivedCompleted =
     goal.status === "completed" ||
@@ -508,6 +514,7 @@ export default function GoalsPage() {
   if (loading) {
     return (
       <PageContainer
+      importAction={<CsvImportDialog entity="goals" onImported={fetchGoals} />}
         pageTitle="Goals and Milestones"
         pageDescription="Build goals with dates and track completion from milestones."
       >
@@ -560,6 +567,7 @@ export default function GoalsPage() {
 
   return (
     <PageContainer
+      importAction={<CsvImportDialog entity="goals" onImported={fetchGoals} />}
       pageTitle="Goals and Milestones"
       pageDescription="Build goals with dates and track completion from milestones."
       pageHeaderAction={

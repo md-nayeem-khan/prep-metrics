@@ -1,5 +1,7 @@
 "use client";
 
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Filter, RefreshCw, MessageSquare, AlertCircle, ChevronRight } from "lucide-react";
@@ -45,12 +47,14 @@ export default function BehavioralPage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ category: "", competency: "", companyId: "" });
 
-  useEffect(() => {
-    fetch("/api/behavioral/filters")
+  const fetchFilterOptions = useCallback(async () => {
+    await fetch("/api/behavioral/filters")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d) setOptions({ categories: d.categories || [], competencies: d.competencies || [], companies: d.companies || [] }); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => { void fetchFilterOptions(); }, [fetchFilterOptions]);
 
   const fetchQuestions = useCallback(async () => {
     setLoading(true);
@@ -80,6 +84,7 @@ export default function BehavioralPage() {
 
   return (
     <PageContainer
+      importAction={<CsvImportDialog entity="behavioral" onImported={async () => { await Promise.all([fetchQuestions(), fetchFilterOptions()]); }} />}
       pageTitle="Behavioral"
       pageDescription="FAANG behavioral question bank with STAR rubric scoring and competency coverage"
     >
