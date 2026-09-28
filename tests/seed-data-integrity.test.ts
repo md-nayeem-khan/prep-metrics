@@ -5,6 +5,17 @@ import { readFileSync } from "node:fs";
 import { SD_TOPIC_SEED, SD_QUESTION_SEED } from "../prisma/seed-data/system-design";
 import { COMPETENCY_SEED, BEHAVIORAL_QUESTION_SEED } from "../prisma/seed-data/behavioral";
 import { NEETCODE_250_ALL_IDS, NEETCODE_250_EXTRA_PROBLEMS, NEETCODE_250_TAG } from "../prisma/seed-data/neetcode250";
+import {
+  HELLO_INTERVIEW_LIST,
+  HELLO_INTERVIEW_LLD_QUESTIONS,
+  HELLO_INTERVIEW_PATTERNS,
+  HELLO_INTERVIEW_SD_QUESTIONS,
+  LLD_INFERRED_TOPIC_LINKS,
+  helloInterviewUrl,
+} from "../prisma/seed-data/hello-interview";
+import { LLD_CATEGORY, LLD_TOPIC_CATEGORY } from "../types/system-design";
+
+const ALL_SD_QUESTIONS = [...SD_QUESTION_SEED, ...HELLO_INTERVIEW_SD_QUESTIONS, ...HELLO_INTERVIEW_LLD_QUESTIONS];
 
 // Mirrors COMPANY_SEED in prisma/seed.ts (kept in sync intentionally).
 const VALID_COMPANIES = new Set([
@@ -13,19 +24,19 @@ const VALID_COMPANIES = new Set([
 
 test("every system design question references known topics and companies", () => {
   const topicNames = new Set(SD_TOPIC_SEED.map((t) => t.name));
-  for (const q of SD_QUESTION_SEED) {
+  for (const q of ALL_SD_QUESTIONS) {
     for (const topic of q.topics) {
       assert.ok(topicNames.has(topic), `SD question ${q.slug} references unknown topic: ${topic}`);
     }
     for (const company of q.companies) {
       assert.ok(VALID_COMPANIES.has(company), `SD question ${q.slug} references unknown company: ${company}`);
     }
-    assert.ok(["medium", "hard"].includes(q.difficulty), `SD question ${q.slug} has invalid difficulty`);
+    assert.ok(["easy", "medium", "hard"].includes(q.difficulty), `SD question ${q.slug} has invalid difficulty`);
   }
 });
 
 test("system design slugs and topic names are unique", () => {
-  const slugs = SD_QUESTION_SEED.map((q) => q.slug);
+  const slugs = ALL_SD_QUESTIONS.map((q) => q.slug);
   assert.equal(new Set(slugs).size, slugs.length, "duplicate SD question slug");
   const topics = SD_TOPIC_SEED.map((t) => t.name);
   assert.equal(new Set(topics).size, topics.length, "duplicate SD topic name");
@@ -102,5 +113,75 @@ test("NeetCode 250 extras are unique, well-formed, and disjoint from NeetCode 15
     for (const company of p.companies) {
       assert.ok(VALID_COMPANIES.has(company), `problem ${p.problemId} references unknown company: ${company}`);
     }
+  }
+});
+
+test("Hello Interview lists are complete and match the seeded questions", () => {
+  const sd = HELLO_INTERVIEW_LIST.filter((e) => e.kind === "system-design");
+  const lld = HELLO_INTERVIEW_LIST.filter((e) => e.kind === "low-level-design");
+  assert.equal(sd.length, 32, "expected 32 Hello Interview system design questions");
+  assert.equal(lld.length, 9, "expected 9 Hello Interview low-level design questions");
+  assert.equal(new Set(HELLO_INTERVIEW_LIST.map((e) => e.slug)).size, 41, "duplicate Hello Interview slug");
+  assert.equal(new Set(HELLO_INTERVIEW_LIST.map((e) => e.kind + e.hiSlug)).size, 41, "duplicate Hello Interview page");
+  assert.equal(ALL_SD_QUESTIONS.length, 48, "expected 48 seeded system design questions");
+
+  const topicNames = new Set(SD_TOPIC_SEED.map((t) => t.name));
+  assert.equal(SD_TOPIC_SEED.length, 37, "expected 37 system design topics");
+  assert.equal(HELLO_INTERVIEW_PATTERNS.length, 7);
+  for (const pattern of HELLO_INTERVIEW_PATTERNS) assert.ok(topicNames.has(pattern), `missing pattern topic ${pattern}`);
+
+  const bySlug = new Map(ALL_SD_QUESTIONS.map((q) => [q.slug, q]));
+  const patternSet = new Set<string>(HELLO_INTERVIEW_PATTERNS);
+  for (const entry of HELLO_INTERVIEW_LIST) {
+    const q = bySlug.get(entry.slug);
+    assert.ok(q, `Hello Interview "${entry.name}" has no seeded question`);
+    assert.equal(q.source, "HelloInterview", `${q.slug} source`);
+    assert.equal(q.difficulty, entry.difficulty, `${q.slug} difficulty`);
+    assert.equal(q.url, helloInterviewUrl(entry), `${q.slug} url`);
+    assert.match(q.url!, /^https:\/\/www\.hellointerview\.com\/learn\/(system-design|low-level-design)\/problem-breakdowns\/[a-z0-9-]+$/);
+    assert.deepEqual(
+      q.topics.filter((t) => patternSet.has(t)).sort(),
+      [...entry.patterns].sort(),
+      `${q.slug} pattern topics must match the verified Hello Interview mapping`,
+    );
+    assert.equal(q.category === LLD_CATEGORY, entry.kind === "low-level-design", `${q.slug} category`);
+  }
+  const listed = new Set(HELLO_INTERVIEW_LIST.map((e) => e.slug));
+  for (const q of ALL_SD_QUESTIONS) {
+    if (q.source === "HelloInterview") assert.ok(listed.has(q.slug), `${q.slug} is marked HelloInterview but not listed`);
+  }
+});
+
+test("low-level design questions use lld- slugs and only object-oriented design topics", () => {
+  const categoryByTopic = new Map(SD_TOPIC_SEED.map((t) => [t.name, t.category]));
+  for (const q of HELLO_INTERVIEW_LLD_QUESTIONS) {
+    assert.match(q.slug, /^lld-[a-z0-9-]+$/, `${q.slug} slug`);
+    assert.equal(q.category, LLD_CATEGORY);
+    assert.deepEqual(q.companies, [], `${q.slug} should have no companies`);
+    for (const topic of q.topics) {
+      // The LLD rate limiter also covers the shared Rate Limiting building block.
+      if (topic === "Rate Limiting") continue;
+      assert.equal(categoryByTopic.get(topic), LLD_TOPIC_CATEGORY, `${q.slug} uses non-OOD topic ${topic}`);
+    }
+  }
+  for (const q of [...SD_QUESTION_SEED, ...HELLO_INTERVIEW_SD_QUESTIONS]) {
+    assert.notEqual(q.category, LLD_CATEGORY, `${q.slug} is a system design question`);
+    for (const topic of q.topics) {
+      assert.notEqual(categoryByTopic.get(topic), LLD_TOPIC_CATEGORY, `${q.slug} uses LLD topic ${topic}`);
+    }
+  }
+  for (const [slug, topics] of Object.entries(LLD_INFERRED_TOPIC_LINKS)) {
+    const q = HELLO_INTERVIEW_LLD_QUESTIONS.find((x) => x.slug === slug);
+    assert.ok(q, `inferred links reference unknown question ${slug}`);
+    for (const topic of topics) assert.ok(q.topics.includes(topic), `${slug} inferred topic ${topic} is not linked`);
+  }
+});
+
+test("new Hello Interview system design questions carry full content and no unverified companies", () => {
+  for (const q of HELLO_INTERVIEW_SD_QUESTIONS) {
+    for (const field of ["prompt", "functionalRequirements", "nonFunctionalRequirements", "estimationNotes", "referenceSolution", "commonPitfalls"] as const) {
+      assert.ok(q[field] && q[field]!.trim().length > 0, `${q.slug} is missing ${field}`);
+    }
+    assert.deepEqual(q.companies, [], `${q.slug} should have no companies`);
   }
 });

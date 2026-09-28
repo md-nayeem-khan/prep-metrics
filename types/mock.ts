@@ -68,7 +68,7 @@ export const MOCK_TYPE_CONFIG: Record<MockType, MockTypeConfig> = {
     icon: Network,
     defaultTimeLimitMinutes: 45,
     defaultDifficulty: "medium",
-    difficultyOptions: ["medium", "hard"],
+    difficultyOptions: ["easy", "medium", "hard"],
     rubricDimensions: SD_RUBRIC_DIMENSIONS,
     rubricKeys: SD_RUBRIC_DIMENSIONS.map((d) => d.key),
     questionSources: ["bank", "random", "manual"],

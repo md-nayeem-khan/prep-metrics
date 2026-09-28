@@ -21,13 +21,18 @@ test('rejects missing, whitespace-only, oversized and non-text fields', () => {
   invalid({ ...question, title: 1 }, 'title');
 });
 test('rejects unsupported values and ownership fields without coercion', () => {
-  invalid({ ...question, difficulty: 'easy' }, 'difficulty');
+  invalid({ ...question, difficulty: 'extreme' }, 'difficulty');
+  invalid({ ...question, difficulty: 'Easy' }, 'difficulty');
   invalid({ ...question, source: 'other' }, 'source');
   invalid({ ...question, userId: 'someone-else' }, '_form');
   invalid({ ...question, topicIds: ['1'] }, 'topicIds');
   invalid({ ...question, companyIds: [-1] }, 'companyIds');
   invalid({ ...question, topicIds: Array(101).fill(1) }, 'topicIds');
   invalid({ ...question, slug: 'bad slug' }, 'slug');
+});
+test('accepts easy difficulty and the HelloInterview source', () => {
+  const result = validateCreate('question', { ...question, difficulty: 'easy', source: 'HelloInterview' });
+  assert.equal(result.difficulty, 'easy'); assert.equal(result.source, 'HelloInterview');
 });
 test('only full HTTP(S) URLs are accepted', () => {
   invalid({ ...question, url: 'javascript:alert(1)' }, 'url');

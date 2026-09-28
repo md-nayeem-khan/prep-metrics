@@ -128,7 +128,7 @@ function QuestionEditor({ owner, onClose, onCreated, requestClose }: {
           {textField('prompt', 'Prompt', true)}
           <Field data-invalid={!!fields.difficulty}><FieldLabel id={`${id}-difficulty`}>Difficulty *</FieldLabel>
             <ToggleGroup type="single" variant="outline" value={draft.difficulty} disabled={busy} aria-labelledby={`${id}-difficulty`} onValueChange={value => { if (value) update('difficulty', value); }}>
-              <ToggleGroupItem value="medium">Medium</ToggleGroupItem><ToggleGroupItem value="hard">Hard</ToggleGroupItem>
+              <ToggleGroupItem value="easy">Easy</ToggleGroupItem><ToggleGroupItem value="medium">Medium</ToggleGroupItem><ToggleGroupItem value="hard">Hard</ToggleGroupItem>
             </ToggleGroup>{fields.difficulty && <FieldError>{fields.difficulty}</FieldError>}
           </Field>
           <TextField name="category" label="Category" required value={draft.category} suggestions={[...QUESTION_CATEGORIES, ...options.categories]} placeholder="Choose or enter a category" onChange={value => update('category', value)} onBlur={() => blur('category')} error={fields.category} disabled={busy} />
@@ -148,7 +148,7 @@ function QuestionEditor({ owner, onClose, onCreated, requestClose }: {
         {sections.map(section => <Collapsible key={section.title} open={expanded.includes(section.title)} onOpenChange={next => setExpanded(previous => next ? [...previous, section.title] : previous.filter(value => value !== section.title))}>
           <CollapsibleTrigger asChild><Button type="button" variant="outline" className="w-full justify-between">{section.title}<ChevronDown data-icon="inline-end" /></Button></CollapsibleTrigger>
           <CollapsibleContent className="pt-5"><FieldGroup>
-            {section.title === 'Additional details' && <Field><FieldLabel id={`${id}-source`}>Source</FieldLabel><ToggleGroup type="single" variant="outline" value={draft.source} disabled={busy} aria-labelledby={`${id}-source`} onValueChange={value => { if (value) update('source', value); }}><ToggleGroupItem value="Company">Company</ToggleGroupItem><ToggleGroupItem value="Curated">Curated</ToggleGroupItem></ToggleGroup></Field>}
+            {section.title === 'Additional details' && <Field><FieldLabel id={`${id}-source`}>Source</FieldLabel><ToggleGroup type="single" variant="outline" value={draft.source} disabled={busy} aria-labelledby={`${id}-source`} onValueChange={value => { if (value) update('source', value); }}><ToggleGroupItem value="Company">Company</ToggleGroupItem><ToggleGroupItem value="Curated">Curated</ToggleGroupItem><ToggleGroupItem value="HelloInterview">Hello Interview</ToggleGroupItem></ToggleGroup></Field>}
             {section.fields.map(([key, label]) => textField(key, label, key === 'slug', !['url', 'slug'].includes(key)))}
             {section.title === 'Additional details' && <FieldDescription>The slug is generated from your title and must be unique in your question bank.</FieldDescription>}
           </FieldGroup></CollapsibleContent>

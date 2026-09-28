@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { SD_TOPIC_SEED, SD_QUESTION_SEED } from './seed-data/system-design'
+import { HELLO_INTERVIEW_SD_QUESTIONS, HELLO_INTERVIEW_LLD_QUESTIONS } from './seed-data/hello-interview'
 import { COMPETENCY_SEED, BEHAVIORAL_QUESTION_SEED } from './seed-data/behavioral'
 
 const prisma = new PrismaClient()
@@ -927,7 +928,7 @@ async function seedSystemDesignTopics() {
 async function seedSystemDesignQuestions() {
   const knownTopics = new Set(SD_TOPIC_SEED.map((t) => t.name))
 
-  for (const question of SD_QUESTION_SEED) {
+  for (const question of [...SD_QUESTION_SEED, ...HELLO_INTERVIEW_SD_QUESTIONS, ...HELLO_INTERVIEW_LLD_QUESTIONS]) {
     const unknownTopics = question.topics.filter((name) => !knownTopics.has(name))
     if (unknownTopics.length > 0) {
       throw new Error(`SD question ${question.slug} has unknown topics: ${unknownTopics.join(', ')}`)
@@ -945,6 +946,8 @@ async function seedSystemDesignQuestions() {
         estimationNotes: question.estimationNotes,
         referenceSolution: question.referenceSolution,
         commonPitfalls: question.commonPitfalls,
+        source: question.source ?? 'Curated',
+        url: question.url ?? null,
       },
       create: {
         userId: SEED_USER_ID,
@@ -958,6 +961,8 @@ async function seedSystemDesignQuestions() {
         estimationNotes: question.estimationNotes,
         referenceSolution: question.referenceSolution,
         commonPitfalls: question.commonPitfalls,
+        source: question.source ?? 'Curated',
+        url: question.url ?? null,
       },
     })
 

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calculateSDTopicMetrics } from '@/lib/analytics/system-design-metrics'
+import { LLD_CATEGORY, LLD_TOPIC_CATEGORY } from '@/types/system-design'
 
 // GET /api/system-design/analytics/topics - Per building-block topic mastery
 export async function GET(request: NextRequest) {
@@ -9,7 +10,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const minQuestions = parseInt(searchParams.get('minQuestions') || '1')
 
+    // Low-level design questions and their OO topics are not system design building blocks.
     const questions = await prisma.systemDesignQuestion.findMany({
+      where: { category: { not: LLD_CATEGORY } },
       include: {
         topics: { include: { topic: { select: { name: true, category: true } } } },
         attempts: { select: { status: true, overallScore: true, usedReference: true, submittedAt: true } },
@@ -19,7 +22,7 @@ export async function GET(request: NextRequest) {
     const metrics = calculateSDTopicMetrics(questions, isNaN(minQuestions) ? 1 : minQuestions)
     // Catalog entries are useful before any question is linked to them. Preserve
     // calculated metrics and add only genuinely unlinked topics with zero values.
-    const catalog = await prisma.systemDesignTopic.findMany({ orderBy: { name: 'asc' } })
+    const catalog = await prisma.systemDesignTopic.findMany({ where: { category: { not: LLD_TOPIC_CATEGORY } }, orderBy: { name: 'asc' } })
     const linkedNames = new Set(questions.flatMap(q => q.topics.map(t => t.topic.name)))
     for (const topic of catalog) {
       if (!linkedNames.has(topic.name)) metrics.push({

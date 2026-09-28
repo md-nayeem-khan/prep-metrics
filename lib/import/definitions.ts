@@ -36,6 +36,7 @@ const required = (example: string): Field => ({ required: true, example });
 const rich: Field = { kind: 'rich' };
 const list: Field = { kind: 'list', example: '[]' };
 const source = { values: ['Curated', 'Company'], default: 'Company' } satisfies Field;
+const sdSource = { values: ['Curated', 'Company', 'HelloInterview'], default: 'Company' } satisfies Field;
 const company = (joinModel: string, parentKey = 'questionId'): Relation => ({ model: 'companyCard', lookup: 'name', join: 'companies', related: 'company', foreignKey: 'companyId', joinModel, parentKey });
 const competency = (joinModel: string, parentKey = 'questionId'): Relation => ({ model: 'competency', lookup: 'name', join: 'competencies', related: 'competency', foreignKey: 'competencyId', joinModel, parentKey });
 
@@ -61,10 +62,10 @@ export const DEFINITIONS = {
     label: 'System-design questions', model: 'systemDesignQuestion', identity: ['slug'],
     fields: {
       slug: required('example-system'), title: required('Design an example system'),
-      difficulty: { ...required('medium'), values: ['medium', 'hard'] }, category: required('Storage'),
+      difficulty: { ...required('medium'), values: ['easy', 'medium', 'hard'] }, category: required('Storage'),
       prompt: { ...required('Describe the requirements and tradeoffs.'), kind: 'rich' },
       functionalRequirements: rich, nonFunctionalRequirements: rich, estimationNotes: rich,
-      referenceSolution: rich, commonPitfalls: rich, source, url: { kind: 'url' }, notes: rich,
+      referenceSolution: rich, commonPitfalls: rich, source: sdSource, url: { kind: 'url' }, notes: rich,
       topics: list, companies: list,
     },
     relations: { topics: { model: 'systemDesignTopic', lookup: 'name', join: 'topics', related: 'topic', foreignKey: 'topicId', joinModel: 'sDQuestionTopic', parentKey: 'questionId' }, companies: company('sDQuestionCompany') },

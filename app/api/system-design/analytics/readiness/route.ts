@@ -5,7 +5,7 @@ import {
   calculateSDReadinessFromLatestAttempts,
   getLatestAttemptsPerQuestion,
 } from '@/lib/analytics/system-design-metrics'
-import { SD_TIME_BENCHMARKS, getSDBenchmarkKey } from '@/types/system-design'
+import { LLD_CATEGORY, SD_TIME_BENCHMARKS, getSDBenchmarkKey } from '@/types/system-design'
 import { getDateWindow } from '@/lib/datetime/tz'
 import { getUserTimezone } from '@/lib/server/user-timezone'
 
@@ -16,10 +16,11 @@ export async function GET(request: NextRequest) {
     const companyIdParam = searchParams.get('companyId')
     const timeframe = searchParams.get('timeframe')
 
-    const where: any = {}
+    // Low-level design attempts are tracked separately from system design readiness.
+    const where: any = { question: { category: { not: LLD_CATEGORY } } }
     const companyId = companyIdParam ? Number(companyIdParam) : null
     if (Number.isInteger(companyId) && (companyId as number) > 0) {
-      where.question = { companies: { some: { companyId } } }
+      where.question.companies = { some: { companyId } }
     }
     if (timeframe === 'week') {
       const tz = await getUserTimezone()
