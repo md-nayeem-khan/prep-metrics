@@ -4,7 +4,12 @@
 
 import type { Confidence, ReadinessLevel } from "@/types";
 
-export type SDDifficulty = "medium" | "hard";
+export type SDDifficulty = "easy" | "medium" | "hard";
+
+// Low-level (OO) design questions share the system design tables but are kept out of
+// system design readiness, topic mastery, and random mock selection.
+export const LLD_CATEGORY = "Low-Level Design";
+export const LLD_TOPIC_CATEGORY = "Object-Oriented Design";
 
 export type SDRubricKey =
   | "requirementsScore"

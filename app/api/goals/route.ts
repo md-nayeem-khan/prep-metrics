@@ -8,6 +8,7 @@ import {
   getLatestAttemptsPerQuestion,
 } from '@/lib/analytics/system-design-metrics';
 import { calculateCompetencyCoverage } from '@/lib/analytics/behavioral-metrics';
+import { LLD_CATEGORY } from '@/types/system-design';
 import { dayKey, addDayKey } from '@/lib/datetime/tz';
 import { getUserTimezone } from '@/lib/server/user-timezone';
 
@@ -329,6 +330,7 @@ async function calculateCurrentValue(goal: any, tz: string = 'UTC'): Promise<num
     case 'systemDesignReadiness': {
       // System design readiness as a percentage (0-100), from latest attempt per question.
       const attempts = await prisma.systemDesignAttempt.findMany({
+        where: { question: { category: { not: LLD_CATEGORY } } },
         select: { questionId: true, status: true, overallScore: true, usedReference: true, submittedAt: true },
       });
       const latest = getLatestAttemptsPerQuestion(attempts);
@@ -339,6 +341,7 @@ async function calculateCurrentValue(goal: any, tz: string = 'UTC'): Promise<num
     case 'topicMastery': {
       // Count of system design building-block topics at "Strong" confidence.
       const questions = await prisma.systemDesignQuestion.findMany({
+        where: { category: { not: LLD_CATEGORY } },
         include: {
           topics: { include: { topic: { select: { name: true, category: true } } } },
           attempts: { select: { status: true, overallScore: true, usedReference: true, submittedAt: true } },

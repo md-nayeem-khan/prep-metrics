@@ -8,8 +8,8 @@ export class CreateValidationError extends Error {
   }
 }
 
-export const QUESTION_CATEGORIES = ['Storage', 'Social/Feed', 'Streaming', 'Messaging', 'Geo', 'Infra/Primitive'];
-export const TOPIC_CATEGORIES = ['Scalability', 'Storage', 'Consistency', 'Networking', 'Messaging'];
+export const QUESTION_CATEGORIES = ['Storage', 'Social/Feed', 'Streaming', 'Messaging', 'Geo', 'Infra/Primitive', 'Commerce', 'Low-Level Design'];
+export const TOPIC_CATEGORIES = ['Scalability', 'Storage', 'Consistency', 'Networking', 'Messaging', 'Object-Oriented Design'];
 export const RICH_FIELDS = ['functionalRequirements', 'nonFunctionalRequirements', 'estimationNotes', 'referenceSolution', 'commonPitfalls', 'notes'] as const;
 export type TopicInput = { name: string; category: string; description: string | null };
 export type QuestionInput = {

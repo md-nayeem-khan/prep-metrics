@@ -45,6 +45,7 @@ interface FilterOptions {
 }
 
 const difficultyVariant: Record<string, "secondary" | "destructive" | "outline"> = {
+  easy: "outline",
   medium: "secondary",
   hard: "destructive",
 };
@@ -61,7 +62,7 @@ export default function SystemDesignPage() {
   const [options, setOptions] = useState<FilterOptions>({ categories: [], companies: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ difficulty: "", category: "", companyId: "" });
+  const [filters, setFilters] = useState({ difficulty: "", category: "", companyId: "", source: "" });
 
   const fetchFilterOptions = useCallback(async () => {
     await fetch("/api/system-design/filters")
@@ -82,6 +83,7 @@ export default function SystemDesignPage() {
       if (filters.difficulty) params.set("difficulty", filters.difficulty);
       if (filters.category) params.set("category", filters.category);
       if (filters.companyId) params.set("companyId", filters.companyId);
+      if (filters.source) params.set("source", filters.source);
       const res = await fetch(`/api/system-design?${params}`);
       if (!res.ok) throw new Error("Failed to fetch questions");
       const data = await res.json();
@@ -119,6 +121,7 @@ export default function SystemDesignPage() {
                 <SelectTrigger className="w-36"><SelectValue placeholder="Difficulty" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Difficulty</SelectItem>
+                  <SelectItem value="easy">Easy</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="hard">Hard</SelectItem>
                 </SelectContent>
@@ -147,8 +150,20 @@ export default function SystemDesignPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select
+                value={filters.source || "all"}
+                onValueChange={(v) => setFilters((f) => ({ ...f, source: v === "all" ? "" : v }))}
+              >
+                <SelectTrigger className="w-40"><SelectValue placeholder="Source" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="HelloInterview">Hello Interview</SelectItem>
+                  <SelectItem value="Curated">Curated</SelectItem>
+                  <SelectItem value="Company">Company</SelectItem>
+                </SelectContent>
+              </Select>
               {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={() => setFilters({ difficulty: "", category: "", companyId: "" })}>
+                <Button variant="ghost" size="sm" onClick={() => setFilters({ difficulty: "", category: "", companyId: "", source: "" })}>
                   <RefreshCw className="mr-1.5 h-3 w-3" /> Clear
                 </Button>
               )}

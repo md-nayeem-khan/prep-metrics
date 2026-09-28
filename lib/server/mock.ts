@@ -3,6 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { type MockType } from "@/types/mock";
+import { LLD_CATEGORY } from "@/types/system-design";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -28,7 +29,8 @@ export async function selectRandomQuestionId(type: MockType, difficulty?: string
     return pickRandom(await prisma.problem.findMany({ where, select: { id: true } }));
   }
   if (type === "systemDesign") {
-    const where: Record<string, unknown> = { ...recent };
+    // Random system design mocks never pick a low-level design question.
+    const where: Record<string, unknown> = { ...recent, category: { not: LLD_CATEGORY } };
     if (difficulty) where.difficulty = difficulty;
     return pickRandom(await prisma.systemDesignQuestion.findMany({ where, select: { id: true } }));
   }
