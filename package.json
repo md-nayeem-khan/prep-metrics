@@ -12,6 +12,7 @@
     "db:generate:sqlite": "prisma generate --schema prisma/schema.sqlite.prisma",
     "db:migrate:sqlite-to-postgres": "tsx scripts/migrate-sqlite-to-postgres.ts",
     "db:seed": "prisma db seed",
+    "db:seed:neetcode250": "tsx prisma/seed-neetcode250.ts",
     "db:reset": "prisma migrate reset --force",
     "db:backfill:daily-progress": "tsx scripts/backfill-daily-progress.ts",
     "test:import:db": "tsx --test tests/integration/csv-import.integration.ts",
