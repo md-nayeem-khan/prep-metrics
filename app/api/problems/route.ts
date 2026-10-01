@@ -221,14 +221,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for duplicate
-    const existing = await prisma.problem.findUnique({
-      where: {
-        platform_problemId: {
-          platform,
-          problemId,
-        },
-      },
+    // Check for duplicate. findFirst (not findUnique): the scoped client adds the
+    // userId filter itself, and compound unique keys are not valid in findFirst.
+    const existing = await prisma.problem.findFirst({
+      where: { platform, problemId },
+      select: { id: true },
     })
 
     if (existing) {
@@ -303,6 +300,12 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'A problem with this platform and problem ID already exists' },
+        { status: 409 }
+      )
+    }
     console.error('Error creating problem:', error)
     return NextResponse.json(
       { error: 'Failed to create problem' },
