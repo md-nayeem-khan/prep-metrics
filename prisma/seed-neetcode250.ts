@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { NEETCODE_250_ALL_IDS, NEETCODE_250_EXTRA_PROBLEMS, NEETCODE_250_TAG } from './seed-data/neetcode250'
+import { NEETCODE_250_ALL_IDS, NEETCODE_250_CUSTOM_IDS, NEETCODE_250_EXTRA_PROBLEMS, NEETCODE_250_TAG } from './seed-data/neetcode250'
 
 // Standalone, insert-only seeder for NeetCode 250. Unlike prisma/seed.ts it never
 // updates or deletes existing rows:
@@ -7,7 +7,8 @@ import { NEETCODE_250_ALL_IDS, NEETCODE_250_EXTRA_PROBLEMS, NEETCODE_250_TAG } f
 //      any that already exist for the seed user),
 //   2. adds the Neetcode250 tag to every NeetCode 250 problem that lacks it
 //      (this covers the 150 problems seeded earlier),
-//   3. verifies the seed user's Neetcode250-tagged problems match the official list.
+//   3. verifies the seed user's Neetcode250-tagged problems match the official list
+//      plus NEETCODE_250_CUSTOM_IDS.
 //
 // Dry run (default):  npx tsx prisma/seed-neetcode250.ts
 // Apply:              npx tsx prisma/seed-neetcode250.ts --apply
@@ -25,8 +26,8 @@ async function main() {
   if (new Set(ids).size !== ids.length) {
     throw new Error('Duplicate problemId in NEETCODE_250_EXTRA_PROBLEMS')
   }
-  if (allIds.size !== 250 || ids.some((id) => !allIds.has(id))) {
-    throw new Error('NEETCODE_250_ALL_IDS must hold 250 ids including every extra problem')
+  if (allIds.size !== 250 + NEETCODE_250_CUSTOM_IDS.length || ids.some((id) => !allIds.has(id))) {
+    throw new Error('NEETCODE_250_ALL_IDS must hold the 250 official ids plus custom ids, including every extra problem')
   }
 
   // Resolve every referenced pattern/company up front so a missing reference
@@ -124,7 +125,7 @@ async function main() {
     console.log(`Tagged ${count} existing problems with ${NEETCODE_250_TAG}.`)
   }
 
-  // Cross-check: tagged problems must be exactly the official NeetCode 250.
+  // Cross-check: tagged problems must be exactly the official NeetCode 250 plus custom ids.
   const tagged = await prisma.problem.findMany({
     where: { userId: SEED_USER_ID, platform: 'leetcode', tags: { some: { tag: NEETCODE_250_TAG } } },
     select: { problemId: true },
