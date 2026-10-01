@@ -147,9 +147,9 @@ export function AddProblemForm({ onSuccess }: AddProblemFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.difficulty) {
+    if (!formData.title.trim() || !formData.problemId.trim() || !formData.platform || !formData.difficulty) {
       toast.error("Required fields missing", {
-        description: "Please fill in the problem title and difficulty",
+        description: "Please fill in the title, problem ID, platform, and difficulty",
       });
       return;
     }
@@ -168,20 +168,26 @@ export function AddProblemForm({ onSuccess }: AddProblemFormProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
+          title: formData.title.trim(),
+          notes: formData.description,
           difficulty: formData.difficulty,
           patterns: selectedPatternIds,
           companyIds: selectedCompanyIds,
           platform: formData.platform,
-          url: formData.url,
-          problemId: formData.problemId,
+          url: formData.url.trim(),
+          problemId: formData.problemId.trim(),
           tags: formData.tags,
           source: selectedCompanyIds.length > 0 ? "Company" : "NeetCode",
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to add problem");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        toast.error("Failed to add problem", {
+          description: payload?.error ?? `Request failed (${response.status})`,
+        });
+        return;
+      }
 
       toast.success("Problem added successfully!", {
         description: `${formData.title} is ready for tracking`,

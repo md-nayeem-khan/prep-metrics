@@ -30,6 +30,7 @@ export const NEETCODE_250_EXTRA_PROBLEMS: NeetCode250ProblemSeed[] = [
   { platform: 'leetcode', problemId: '169', title: 'Majority Element', difficulty: 'easy', url: 'https://leetcode.com/problems/majority-element', companies: ['Amazon', 'Facebook', 'Google', 'Microsoft'], patternNames: ['Hashing'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '705', title: 'Design HashSet', difficulty: 'easy', url: 'https://leetcode.com/problems/design-hashset', companies: ['Amazon', 'Facebook', 'Google'], patternNames: ['Hashing'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '706', title: 'Design HashMap', difficulty: 'easy', url: 'https://leetcode.com/problems/design-hashmap', companies: ['Amazon', 'Apple', 'Facebook', 'Google', 'Microsoft', 'Bytedance'], patternNames: ['Hashing'], tags: [NEETCODE_250_TAG] },
+  { platform: 'leetcode', problemId: '290', title: 'Word Pattern', difficulty: 'easy', url: 'https://leetcode.com/problems/word-pattern', companies: ['Amazon', 'Facebook', 'Google', 'Microsoft'], patternNames: ['Hashing'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '912', title: 'Sort an Array', difficulty: 'medium', url: 'https://leetcode.com/problems/sort-an-array', companies: ['Amazon', 'Apple', 'Facebook', 'Google', 'Microsoft', 'Bytedance'], patternNames: ['Sorting'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '75', title: 'Sort Colors', difficulty: 'medium', url: 'https://leetcode.com/problems/sort-colors', companies: ['Amazon', 'Apple', 'Facebook', 'Google', 'Microsoft', 'Bytedance', 'Agoda'], patternNames: ['Two pointers', 'Sorting'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '304', title: 'Range Sum Query 2D Immutable', difficulty: 'medium', url: 'https://leetcode.com/problems/range-sum-query-2d-immutable', companies: ['Amazon', 'Facebook', 'Google', 'Microsoft'], patternNames: ['Prefix sum', 'Matrix'], tags: [NEETCODE_250_TAG] },
@@ -162,7 +163,7 @@ export const NEETCODE_250_EXTRA_PROBLEMS: NeetCode250ProblemSeed[] = [
 
 // LeetCode ids of the full official NeetCode 250 list (includes the NeetCode 150).
 // Every problem with one of these ids gets NEETCODE_250_TAG.
-export const NEETCODE_250_ALL_IDS: string[] = [
+export const NEETCODE_250_OFFICIAL_IDS: string[] = [
   '1929', '217', '242', '1', '14', '49', '27', '169', '705', '706', '912', '75', '347', '271', '304', '238', '36', '128', '122', '229',
   '560', '41', '344', '125', '680', '1768', '88', '26', '167', '15', '18', '189', '11', '881', '42', '219', '121', '3', '424', '567',
   '209', '658', '76', '239', '682', '20', '225', '232', '155', '150', '735', '739', '901', '853', '71', '394', '895', '84', '704', '35',
@@ -177,3 +178,8 @@ export const NEETCODE_250_ALL_IDS: string[] = [
   '57', '56', '435', '252', '253', '2402', '1851', '168', '1071', '2807', '867', '48', '54', '73', '202', '66', '13', '50', '43', '2013',
   '136', '191', '338', '67', '190', '268', '371', '7', '201', '3133',
 ]
+
+// Problems tagged NEETCODE_250_TAG on top of the official list (personal additions).
+export const NEETCODE_250_CUSTOM_IDS: string[] = ['290']
+
+export const NEETCODE_250_ALL_IDS: string[] = [...NEETCODE_250_OFFICIAL_IDS, ...NEETCODE_250_CUSTOM_IDS]
