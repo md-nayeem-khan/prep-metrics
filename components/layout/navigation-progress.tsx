@@ -30,6 +30,20 @@ function NavigationProgressInner() {
     doneTimers.current = [];
   }, []);
 
+  const done = React.useCallback(() => {
+    if (!loadingRef.current) return;
+    loadingRef.current = false;
+    clearTimers();
+    setProgress(100);
+    // Hold at 100%, fade out, then reset width for the next navigation.
+    doneTimers.current.push(
+      setTimeout(() => {
+        setVisible(false);
+        doneTimers.current.push(setTimeout(() => setProgress(0), 200));
+      }, 200),
+    );
+  }, [clearTimers]);
+
   const start = React.useCallback(() => {
     if (loadingRef.current) return;
     loadingRef.current = true;
@@ -44,21 +58,9 @@ function NavigationProgressInner() {
         return Math.min(90, p + inc);
       });
     }, 200);
-  }, [clearTimers]);
-
-  const done = React.useCallback(() => {
-    if (!loadingRef.current) return;
-    loadingRef.current = false;
-    clearTimers();
-    setProgress(100);
-    // Hold at 100%, fade out, then reset width for the next navigation.
-    doneTimers.current.push(
-      setTimeout(() => {
-        setVisible(false);
-        doneTimers.current.push(setTimeout(() => setProgress(0), 200));
-      }, 200),
-    );
-  }, [clearTimers]);
+    // Safety net: never leave the bar hanging if a navigation is aborted.
+    doneTimers.current.push(setTimeout(done, 10000));
+  }, [clearTimers, done]);
 
   // Complete the bar whenever the route (pathname or query) actually changes.
   const firstRender = React.useRef(true);
@@ -107,28 +109,35 @@ function NavigationProgressInner() {
       }
       // Ignore external links and navigations that stay on the same URL.
       if (url.origin !== window.location.origin) return;
-      if (url.href === window.location.href) return;
+      const current = new URL(window.location.href);
+      if (
+        url.pathname === current.pathname &&
+        url.search === current.search
+      ) {
+        // Same URL or hash-only change: no route transition will complete it.
+        return;
+      }
       start();
     };
 
     document.addEventListener("click", onClick, true);
 
-    // Patch history so programmatic navigations (router.push/replace) also
-    // trigger the bar. The originals are restored on cleanup.
+    // Patch history to detect when a navigation has committed. The App Router
+    // only updates history once the new route is rendered, so a history
+    // update marks the end of a navigation (never the start — starting here
+    // would race the pathname effect and leave the bar stuck at 90%).
+    // The originals are restored on cleanup.
     const origPush = window.history.pushState;
     const origReplace = window.history.replaceState;
     const wrap =
       (fn: typeof window.history.pushState) =>
       (...args: Parameters<typeof window.history.pushState>) => {
-        const nextUrl = args[2];
-        if (nextUrl != null) {
-          const url = new URL(String(nextUrl), window.location.href);
-          // Defer the state update: React patches history during its commit
-          // (insertion-effect) phase, and scheduling updates synchronously
-          // there triggers "useInsertionEffect must not schedule updates".
-          if (url.href !== window.location.href) queueMicrotask(start);
-        }
-        return fn.apply(window.history, args);
+        const result = fn.apply(window.history, args);
+        // Defer the state update: React patches history during its commit
+        // (insertion-effect) phase, and scheduling updates synchronously
+        // there triggers "useInsertionEffect must not schedule updates".
+        queueMicrotask(done);
+        return result;
       };
     window.history.pushState = wrap(origPush);
     window.history.replaceState = wrap(origReplace);
@@ -138,7 +147,7 @@ function NavigationProgressInner() {
       window.history.pushState = origPush;
       window.history.replaceState = origReplace;
     };
-  }, [start]);
+  }, [start, done]);
 
   return (
     <div
