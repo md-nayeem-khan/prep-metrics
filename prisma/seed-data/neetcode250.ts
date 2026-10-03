@@ -33,6 +33,7 @@ export const NEETCODE_250_EXTRA_PROBLEMS: NeetCode250ProblemSeed[] = [
   { platform: 'leetcode', problemId: '290', title: 'Word Pattern', difficulty: 'easy', url: 'https://leetcode.com/problems/word-pattern', companies: ['Amazon', 'Facebook', 'Google', 'Microsoft'], patternNames: ['Hashing'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '380', title: 'Insert Delete GetRandom O(1)', difficulty: 'medium', url: 'https://leetcode.com/problems/insert-delete-getrandom-o1', companies: ['Amazon', 'Apple', 'Facebook', 'Google', 'Microsoft', 'Bytedance', 'Agoda'], patternNames: ['Hashing', 'Composite Data Structures'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '58', title: 'Length of Last Word', difficulty: 'easy', url: 'https://leetcode.com/problems/length-of-last-word', companies: ['Amazon', 'Apple', 'Facebook', 'Google', 'Microsoft'], patternNames: [], tags: [NEETCODE_250_TAG] },
+  { platform: 'leetcode', problemId: '228', title: 'Summary Ranges', difficulty: 'easy', url: 'https://leetcode.com/problems/summary-ranges', companies: ['Amazon', 'Facebook', 'Google', 'Microsoft'], patternNames: ['Two pointers'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '912', title: 'Sort an Array', difficulty: 'medium', url: 'https://leetcode.com/problems/sort-an-array', companies: ['Amazon', 'Apple', 'Facebook', 'Google', 'Microsoft', 'Bytedance'], patternNames: ['Sorting'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '75', title: 'Sort Colors', difficulty: 'medium', url: 'https://leetcode.com/problems/sort-colors', companies: ['Amazon', 'Apple', 'Facebook', 'Google', 'Microsoft', 'Bytedance', 'Agoda'], patternNames: ['Two pointers', 'Sorting'], tags: [NEETCODE_250_TAG] },
   { platform: 'leetcode', problemId: '304', title: 'Range Sum Query 2D Immutable', difficulty: 'medium', url: 'https://leetcode.com/problems/range-sum-query-2d-immutable', companies: ['Amazon', 'Facebook', 'Google', 'Microsoft'], patternNames: ['Prefix sum', 'Matrix'], tags: [NEETCODE_250_TAG] },
@@ -182,6 +183,6 @@ export const NEETCODE_250_OFFICIAL_IDS: string[] = [
 ]
 
 // Problems tagged NEETCODE_250_TAG on top of the official list (personal additions).
-export const NEETCODE_250_CUSTOM_IDS: string[] = ['290', '380', '58']
+export const NEETCODE_250_CUSTOM_IDS: string[] = ['290', '380', '58', '228']
 
 export const NEETCODE_250_ALL_IDS: string[] = [...NEETCODE_250_OFFICIAL_IDS, ...NEETCODE_250_CUSTOM_IDS]
